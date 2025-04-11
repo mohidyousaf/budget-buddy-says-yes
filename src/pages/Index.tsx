@@ -2,17 +2,22 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import GoogleSheetInput from "@/components/GoogleSheetInput";
 import PurchaseForm from "@/components/PurchaseForm";
 import DecisionResult from "@/components/DecisionResult";
 import SheetDataSummary from "@/components/SheetDataSummary";
+import TrendAnalysis from "@/components/TrendAnalysis";
+import FinancialWellness from "@/components/FinancialWellness";
+import InvestmentOpportunities from "@/components/InvestmentOpportunities";
 import { fetchSheetData, SheetData, getSavedSheetUrl } from "@/services/sheetService";
 import { analyzePurchase, Decision } from "@/services/decisionService";
 import { generateAIAnalysis, AIAnalysis } from "@/services/aiService";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowRight } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Button } from "@/components/ui/button";
 
 const Index = () => {
   const [isConnecting, setIsConnecting] = useState(false);
@@ -64,7 +69,7 @@ const Index = () => {
         localStorage.setItem('currentBalance', data.summary.currentBalance.toString());
       }
       
-      toast.success("Connected to your balance sheet!");
+      toast.success(`Connected to your balance sheet for ${data.summary.month}!`);
     } catch (error) {
       toast.error("Failed to connect to your balance sheet");
       console.error(error);
@@ -98,7 +103,8 @@ const Index = () => {
         amount,
         description,
         categoryData.spent,
-        categoryData.limit
+        categoryData.limit,
+        sheetData
       );
       
       setAiAnalysis(aiResult);
@@ -113,7 +119,7 @@ const Index = () => {
   // Extract available categories from sheet data
   const categories = sheetData 
     ? sheetData.categories.map(cat => cat.name)
-    : ["Food", "Entertainment", "Car", "Shopping", "Grocery", "Shipping", "Utilities"];
+    : ["Food", "Entertainment", "Car", "Shopping", "Grocery", "Shipping", "Utilities", "Pets", "Education"];
 
   // Data summary for the connected sheet
   const summary = sheetData 
@@ -160,9 +166,9 @@ const Index = () => {
             className="max-w-md mx-auto py-6"
           >
             <div className="text-center mb-6">
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2">Make Smart Financial Decisions</h1>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2">Mohid Budget Buddy</h1>
               <p className="text-muted-foreground text-sm md:text-base">
-                Connect your balance sheet and get instant feedback on your purchase decisions
+                Connect your balance sheet and get intelligent insights for smarter financial decisions
               </p>
             </div>
             
@@ -172,34 +178,70 @@ const Index = () => {
         
         {/* Main App Content */}
         {sheetData && (
-          <div className={`grid grid-cols-1 ${isMobile ? 'gap-4' : 'md:grid-cols-3 gap-6'}`}>
-            {/* Left Column - Sheet Summary */}
-            <div className="md:col-span-1">
-              <SheetDataSummary isConnected={!!sheetData} summary={summary} />
+          <>
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-1">
+                  Welcome to Mohid Budget Buddy
+                </h1>
+                <p className="text-muted-foreground">
+                  Your financial data for {sheetData.summary.month} is loaded
+                </p>
+              </div>
+              <div className="hidden md:flex items-center gap-2">
+                <Button asChild variant="outline">
+                  <Link to="/analysis" className="flex items-center gap-1">
+                    View Full Analysis
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild>
+                  <Link to="/learn">
+                    Financial Education
+                  </Link>
+                </Button>
+              </div>
             </div>
             
-            {/* Middle Column - Purchase Form */}
-            <div className="md:col-span-1">
-              <PurchaseForm 
-                onSubmit={handlePurchaseSubmit}
-                categories={categories}
-                isLoading={isAnalyzing}
-              />
-            </div>
-            
-            {/* Right Column - Decision Result */}
-            <div className="md:col-span-1">
-              {decision && purchaseDetails && (
-                <DecisionResult
-                  decision={decision.decision}
-                  amount={purchaseDetails.amount}
-                  category={purchaseDetails.category}
-                  reasoning={decision.reasoning}
-                  metrics={decision.metrics}
+            <div className={`grid grid-cols-1 ${isMobile ? 'gap-4' : 'md:grid-cols-3 gap-6'}`}>
+              {/* Left Column - Sheet Summary */}
+              <div className="md:col-span-1">
+                <SheetDataSummary isConnected={!!sheetData} summary={summary} />
+              </div>
+              
+              {/* Middle Column - Purchase Form */}
+              <div className="md:col-span-1">
+                <PurchaseForm 
+                  onSubmit={handlePurchaseSubmit}
+                  categories={categories}
+                  isLoading={isAnalyzing}
                 />
-              )}
+              </div>
+              
+              {/* Right Column - Decision Result */}
+              <div className="md:col-span-1">
+                {decision && purchaseDetails && (
+                  <DecisionResult
+                    decision={decision.decision}
+                    amount={purchaseDetails.amount}
+                    category={purchaseDetails.category}
+                    reasoning={decision.reasoning}
+                    metrics={decision.metrics}
+                  />
+                )}
+              </div>
             </div>
-          </div>
+            
+            {/* Expanded content for connected users */}
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FinancialWellness sheetData={sheetData} />
+              <TrendAnalysis sheetData={sheetData} />
+            </div>
+            
+            <div className="mt-6">
+              <InvestmentOpportunities sheetData={sheetData} />
+            </div>
+          </>
         )}
         
         {/* AI Analysis */}
@@ -227,6 +269,13 @@ const Index = () => {
                   <p className="font-medium">Suggestion:</p>
                   <p>{aiAnalysis.suggestion}</p>
                 </div>
+                
+                {aiAnalysis.investmentAdvice && (
+                  <div className="pt-2 border-t">
+                    <p className="font-medium">Investment Advice:</p>
+                    <p>{aiAnalysis.investmentAdvice}</p>
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>

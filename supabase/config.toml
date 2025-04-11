@@ -1,1 +1,19 @@
+
 project_id = "klfelhvyycehehdekeiy"
+
+[db.extensions]
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage"]
+
+[functions]
+  [functions.get-sheet-url]
+  verify_jwt = false
+  
+  [functions.save-sheet-url]
+  verify_jwt = false
+  
+  [functions.analyze-budget] 
+  verify_jwt = false

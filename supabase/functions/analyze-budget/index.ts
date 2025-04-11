@@ -14,12 +14,13 @@ serve(async (req) => {
   }
 
   try {
-    const { category, amount, description, categorySpent, categoryLimit, balance } = await req.json();
+    const { category, amount, description, categorySpent, categoryLimit, balance, historicalData, financialWellness } = await req.json();
 
     // Enhanced analysis logic
     const insights = [];
     let suggestion = "";
     let confidence = 0.8;
+    let investmentAdvice = "";
 
     // Calculate metrics
     const percentOfBudget = (categorySpent / categoryLimit) * 100;
@@ -30,8 +31,8 @@ serve(async (req) => {
     const isPurchaseLarge = amount > categoryLimit * 0.4;
     const isBudgetNearlyDepleted = newPercentOfBudget > 85;
     const isBudgetExceeded = newPercentOfBudget > 100;
-    
-    // Generate insights based on category and spending patterns
+
+    // Context-aware analysis based on category
     if (category.toLowerCase() === "food") {
       if (isBudgetExceeded) {
         insights.push("You've already exceeded your food budget this month.");
@@ -79,6 +80,26 @@ serve(async (req) => {
         suggestion = "This purchase fits your shopping patterns";
         confidence = 0.85;
       }
+    } else if (category.toLowerCase() === "education") {
+      insights.push("Education expenses are generally a good investment in your future.");
+      if (isPurchaseLarge) {
+        insights.push("This is a significant education expense.");
+        suggestion = "Education is valuable, but consider if there are more cost-effective alternatives";
+        confidence = 0.8;
+      } else {
+        suggestion = "Education spending has long-term benefits";
+        confidence = 0.9;
+      }
+    } else if (category.toLowerCase() === "pets") {
+      if (isBudgetExceeded) {
+        insights.push("You've exceeded your pet budget this month.");
+        suggestion = "Look for ways to save on pet expenses without compromising care";
+        confidence = 0.85;
+      } else {
+        insights.push("Your pet expenses are within your planned budget.");
+        suggestion = "Continue monitoring pet expenses to ensure they remain affordable";
+        confidence = 0.85;
+      }
     } else {
       // Generic insights for other categories
       if (isBudgetExceeded) {
@@ -115,11 +136,29 @@ serve(async (req) => {
       }
     }
 
+    // Add investment advice based on financial wellness if available
+    if (financialWellness && financialWellness.score >= 70) {
+      if (amount > 10000) {
+        investmentAdvice = "With your strong financial position, consider investing part of this amount in low-risk mutual funds instead";
+      } else if (financialWellness.savingsRate > 0.3) {
+        investmentAdvice = "You're saving well. Consider allocating some of your savings to dividend-paying stocks for passive income";
+      }
+    } else if (financialWellness && financialWellness.score >= 50) {
+      investmentAdvice = "Build your emergency fund first, then consider conservative investments like index funds";
+    } else if (financialWellness) {
+      investmentAdvice = "Focus on budgeting and reducing expenses before considering investment options";
+    }
+
+    if (investmentAdvice) {
+      insights.push(investmentAdvice);
+    }
+
     return new Response(
       JSON.stringify({
         additionalInsights: insights,
         suggestion: suggestion,
         confidence: Math.min(confidence, 0.98),
+        investmentAdvice: investmentAdvice,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
