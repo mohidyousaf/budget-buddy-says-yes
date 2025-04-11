@@ -47,6 +47,9 @@ const GoogleSheetInput = ({ onSheetSubmit, isLoading }: GoogleSheetInputProps) =
       return;
     }
     
+    // Save to localStorage as backup
+    localStorage.setItem('sheetUrl', sheetUrl);
+    
     onSheetSubmit(sheetUrl);
   };
 

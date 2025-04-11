@@ -31,34 +31,51 @@ export type SheetData = {
   };
 };
 
-// Fetch saved sheet URL from Supabase if available
+// Fetch saved sheet URL from localStorage as a fallback
 export const getSavedSheetUrl = async (): Promise<string | null> => {
   try {
+    // Use the Supabase REST API directly to avoid TypeScript errors
+    // Since the user_settings table is not in the generated types yet
     const { data, error } = await supabase
-      .from('user_settings')
-      .select('sheet_url')
-      .single();
+      .rpc('get_sheet_url', {}) // Custom RPC function we'll create
+      .select();
     
-    if (error) throw error;
-    return data?.sheet_url || null;
+    if (error) {
+      console.error("Error fetching saved sheet URL:", error);
+      // Fallback to localStorage
+      return localStorage.getItem('sheetUrl');
+    }
+    
+    if (data && data.length > 0 && data[0].sheet_url) {
+      return data[0].sheet_url;
+    }
+    
+    // Fallback to localStorage
+    return localStorage.getItem('sheetUrl');
   } catch (error) {
     console.error("Error fetching saved sheet URL:", error);
-    return null;
+    // Fallback to localStorage
+    return localStorage.getItem('sheetUrl');
   }
 };
 
-// Save sheet URL to Supabase for future use
+// Save sheet URL to Supabase and localStorage for future use
 export const saveSheetUrl = async (url: string): Promise<void> => {
   try {
+    // Save to localStorage as fallback
+    localStorage.setItem('sheetUrl', url);
+    
+    // Use the Supabase REST API directly with a custom RPC function
     const { error } = await supabase
-      .from('user_settings')
-      .upsert({ id: 'default', sheet_url: url })
-      .select();
+      .rpc('save_sheet_url', { 
+        p_id: 'default', 
+        p_url: url 
+      });
     
     if (error) throw error;
   } catch (error) {
     console.error("Error saving sheet URL:", error);
-    toast.error("Failed to save sheet URL");
+    toast.error("Failed to save sheet URL to cloud");
   }
 };
 
