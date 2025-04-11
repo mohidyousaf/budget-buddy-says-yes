@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingBag } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type PurchaseFormProps = {
   onSubmit: (amount: number, category: string, description: string) => void;
@@ -17,6 +18,7 @@ const PurchaseForm = ({ onSubmit, categories, isLoading }: PurchaseFormProps) =>
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
+  const isMobile = useIsMobile();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,8 +34,8 @@ const PurchaseForm = ({ onSubmit, categories, isLoading }: PurchaseFormProps) =>
 
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+      <CardHeader className={isMobile ? "px-4 pt-4 pb-2" : undefined}>
+        <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
           <ShoppingBag className="h-5 w-5" />
           <span>Can I buy this?</span>
         </CardTitle>
@@ -42,9 +44,9 @@ const PurchaseForm = ({ onSubmit, categories, isLoading }: PurchaseFormProps) =>
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
+        <CardContent className={`space-y-4 ${isMobile ? "px-4 py-2" : undefined}`}>
           <div className="space-y-2">
-            <Label htmlFor="amount">Amount ($)</Label>
+            <Label htmlFor="amount">Amount (PKR)</Label>
             <Input
               id="amount"
               placeholder="0.00"
@@ -54,6 +56,7 @@ const PurchaseForm = ({ onSubmit, categories, isLoading }: PurchaseFormProps) =>
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               required
+              className="text-right"
             />
           </div>
           
@@ -63,7 +66,7 @@ const PurchaseForm = ({ onSubmit, categories, isLoading }: PurchaseFormProps) =>
               <SelectTrigger id="category">
                 <SelectValue placeholder="Select a category" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position={isMobile ? "popper" : "item-aligned"} className="bg-card border-border">
                 {categories.map((cat) => (
                   <SelectItem key={cat} value={cat}>
                     {cat}
@@ -84,7 +87,7 @@ const PurchaseForm = ({ onSubmit, categories, isLoading }: PurchaseFormProps) =>
           </div>
         </CardContent>
         
-        <CardFooter>
+        <CardFooter className={isMobile ? "px-4 pb-4 pt-2" : undefined}>
           <Button type="submit" className="w-full" disabled={isLoading || !amount || !category}>
             {isLoading ? "Analyzing..." : "Check if I can buy this"}
           </Button>

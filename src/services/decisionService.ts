@@ -1,3 +1,4 @@
+
 import { SheetData, getCategoryData } from "./sheetService";
 
 export type DecisionType = "yes" | "no" | "caution";
@@ -59,28 +60,28 @@ export const analyzePurchase = (
   // If balance would be negative, immediate no
   if (!hasEnoughBalance) {
     decision = "no";
-    reasoning.push(`This purchase would put your account in the negative with a balance of $${balanceAfterPurchase.toFixed(2)}.`);
-    reasoning.push(`You currently have $${balance.toFixed(2)} available.`);
+    reasoning.push(`This purchase would put your account in the negative with a balance of PKR ${balanceAfterPurchase.toLocaleString()}.`);
+    reasoning.push(`You currently have PKR ${balance.toLocaleString()} available.`);
   }
   // If exceeds category budget substantially, likely no
   else if (exceedsCategoryBudget && categoryRemainingAfterPurchase < -0.1 * categoryData.limit) {
     decision = "no";
-    reasoning.push(`This would exceed your ${category} budget by $${(-categoryRemainingAfterPurchase).toFixed(2)}.`);
-    reasoning.push(`You've already spent $${categoryData.spent.toFixed(2)} of your $${categoryData.limit.toFixed(2)} ${category} budget.`);
+    reasoning.push(`This would exceed your ${category} budget by PKR ${(-categoryRemainingAfterPurchase).toLocaleString()}.`);
+    reasoning.push(`You've already spent PKR ${categoryData.spent.toLocaleString()} of your PKR ${categoryData.limit.toLocaleString()} ${category} budget.`);
     reasoning.push(`Consider postponing this purchase to next month or adjusting your budget.`);
   }
   // If just slightly exceeds category budget, caution
   else if (exceedsCategoryBudget) {
     decision = "caution";
-    reasoning.push(`This would slightly exceed your ${category} budget by $${(-categoryRemainingAfterPurchase).toFixed(2)}.`);
-    reasoning.push(`You have $${categoryData.remaining.toFixed(2)} remaining in your ${category} budget.`);
+    reasoning.push(`This would slightly exceed your ${category} budget by PKR ${(-categoryRemainingAfterPurchase).toLocaleString()}.`);
+    reasoning.push(`You have PKR ${categoryData.remaining.toLocaleString()} remaining in your ${category} budget.`);
     reasoning.push(`You might need to reduce spending in this category for the rest of the month.`);
   }
   // If close to category budget, caution
   else if (categoryUsagePercentage > 85) {
     decision = "caution";
     reasoning.push(`This purchase would use ${categoryUsagePercentage.toFixed(1)}% of your ${category} budget.`);
-    reasoning.push(`You'll have only $${categoryRemainingAfterPurchase.toFixed(2)} remaining in your ${category} budget after this purchase.`);
+    reasoning.push(`You'll have only PKR ${categoryRemainingAfterPurchase.toLocaleString()} remaining in your ${category} budget after this purchase.`);
     reasoning.push(`Be mindful of additional ${category} expenses for the rest of the month.`);
   }
   // If significant portion of overall balance, caution
@@ -93,8 +94,8 @@ export const analyzePurchase = (
   // Otherwise, yes
   else {
     decision = "yes";
-    reasoning.push(`You have sufficient funds for this purchase ($${balance.toFixed(2)} available).`);
-    reasoning.push(`You'll still have $${categoryRemainingAfterPurchase.toFixed(2)} remaining in your ${category} budget after this purchase.`);
+    reasoning.push(`You have sufficient funds for this purchase (PKR ${balance.toLocaleString()} available).`);
+    reasoning.push(`You'll still have PKR ${categoryRemainingAfterPurchase.toLocaleString()} remaining in your ${category} budget after this purchase.`);
     reasoning.push(`This purchase fits well within your budget plan.`);
   }
   

@@ -1,5 +1,6 @@
 
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock data model based on the screenshot
 export type SheetData = {
@@ -30,16 +31,49 @@ export type SheetData = {
   };
 };
 
+// Fetch saved sheet URL from Supabase if available
+export const getSavedSheetUrl = async (): Promise<string | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('user_settings')
+      .select('sheet_url')
+      .single();
+    
+    if (error) throw error;
+    return data?.sheet_url || null;
+  } catch (error) {
+    console.error("Error fetching saved sheet URL:", error);
+    return null;
+  }
+};
+
+// Save sheet URL to Supabase for future use
+export const saveSheetUrl = async (url: string): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('user_settings')
+      .upsert({ id: 'default', sheet_url: url })
+      .select();
+    
+    if (error) throw error;
+  } catch (error) {
+    console.error("Error saving sheet URL:", error);
+    toast.error("Failed to save sheet URL");
+  }
+};
+
 // Function to fetch and parse Google Sheet data
-// For now, we'll use mock data since actual Google Sheets API integration would require OAuth
 export const fetchSheetData = async (url: string): Promise<SheetData> => {
+  // Save the URL for future use
+  await saveSheetUrl(url);
+  
   // In a real app, this would connect to the Google Sheets API
   // For demo purposes, we'll simulate a network request
   
   return new Promise((resolve) => {
     // Simulate API delay
     setTimeout(() => {
-      // Mock data based on the screenshot
+      // Mock data based on the screenshot - using latest month's data
       const mockData: SheetData = {
         credits: [
           { description: "salary", amount: 322000 }

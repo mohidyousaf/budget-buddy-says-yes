@@ -1,10 +1,12 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Link } from "lucide-react";
+import { Link, Loader2 } from "lucide-react";
+import { getSavedSheetUrl } from "@/services/sheetService";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type GoogleSheetInputProps = {
   onSheetSubmit: (url: string) => void;
@@ -13,6 +15,28 @@ type GoogleSheetInputProps = {
 
 const GoogleSheetInput = ({ onSheetSubmit, isLoading }: GoogleSheetInputProps) => {
   const [sheetUrl, setSheetUrl] = useState("");
+  const [isLoadingSaved, setIsLoadingSaved] = useState(true);
+  const isMobile = useIsMobile();
+
+  // Check for previously saved sheet URL on component mount
+  useEffect(() => {
+    const checkSavedUrl = async () => {
+      try {
+        const savedUrl = await getSavedSheetUrl();
+        if (savedUrl) {
+          setSheetUrl(savedUrl);
+          toast.info("Using previously saved sheet URL");
+          onSheetSubmit(savedUrl);
+        }
+      } catch (error) {
+        console.error("Error loading saved sheet URL:", error);
+      } finally {
+        setIsLoadingSaved(false);
+      }
+    };
+    
+    checkSavedUrl();
+  }, [onSheetSubmit]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,9 +51,9 @@ const GoogleSheetInput = ({ onSheetSubmit, isLoading }: GoogleSheetInputProps) =
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader className={isMobile ? "px-4 pt-4 pb-2" : undefined}>
+        <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
           <Link className="h-5 w-5" />
           <span>Connect your balance sheet</span>
         </CardTitle>
@@ -37,23 +61,30 @@ const GoogleSheetInput = ({ onSheetSubmit, isLoading }: GoogleSheetInputProps) =
           Enter the URL of your Google Sheet containing your financial data
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Input
-              placeholder="https://docs.google.com/spreadsheets/d/..."
-              value={sheetUrl}
-              onChange={(e) => setSheetUrl(e.target.value)}
-              className="w-full"
-            />
-            <p className="text-xs text-muted-foreground">
-              Make sure your sheet is public or has sharing enabled
-            </p>
+      <CardContent className={isMobile ? "px-4 py-4" : undefined}>
+        {isLoadingSaved ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="sr-only">Loading saved sheet...</span>
           </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Connecting..." : "Connect Sheet"}
-          </Button>
-        </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Input
+                placeholder="https://docs.google.com/spreadsheets/d/..."
+                value={sheetUrl}
+                onChange={(e) => setSheetUrl(e.target.value)}
+                className="w-full"
+              />
+              <p className="text-xs text-muted-foreground">
+                Make sure your sheet is public or has sharing enabled
+              </p>
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Connecting..." : "Connect Sheet"}
+            </Button>
+          </form>
+        )}
       </CardContent>
     </Card>
   );

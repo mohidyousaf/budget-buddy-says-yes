@@ -1,6 +1,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileSpreadsheet, DollarSign, ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react";
+import { FileSpreadsheet, ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type SheetDataSummaryProps = {
   isConnected: boolean;
@@ -17,6 +18,8 @@ type SheetDataSummaryProps = {
 };
 
 const SheetDataSummary = ({ isConnected, summary }: SheetDataSummaryProps) => {
+  const isMobile = useIsMobile();
+  
   if (!isConnected || !summary) {
     return null;
   }
@@ -25,44 +28,44 @@ const SheetDataSummary = ({ isConnected, summary }: SheetDataSummaryProps) => {
   
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+      <CardHeader className={isMobile ? "px-4 pt-4 pb-2" : undefined}>
+        <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
           <FileSpreadsheet className="h-5 w-5" />
           <span>Balance Sheet Summary</span>
         </CardTitle>
         <CardDescription>
-          Overview of your current financial situation
+          Latest month's financial situation
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className={`space-y-6 ${isMobile ? "px-4 pb-4 pt-2" : undefined}`}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-secondary p-4 rounded-lg flex items-center gap-3">
-            <div className="p-2.5 bg-budget-green/20 rounded-full">
-              <ArrowUpRight className="h-5 w-5 text-budget-green" />
+          <div className="bg-secondary p-3 rounded-lg flex items-center gap-3">
+            <div className="p-2 bg-budget-green/20 rounded-full">
+              <ArrowUpRight className="h-4 w-4 text-budget-green" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Total Credits</p>
-              <p className="text-xl font-medium">${totalCredits.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground">Total Credits</p>
+              <p className="text-base font-medium">PKR {totalCredits.toLocaleString()}</p>
             </div>
           </div>
           
-          <div className="bg-secondary p-4 rounded-lg flex items-center gap-3">
-            <div className="p-2.5 bg-budget-red/20 rounded-full">
-              <ArrowDownRight className="h-5 w-5 text-budget-red" />
+          <div className="bg-secondary p-3 rounded-lg flex items-center gap-3">
+            <div className="p-2 bg-budget-red/20 rounded-full">
+              <ArrowDownRight className="h-4 w-4 text-budget-red" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Total Debits</p>
-              <p className="text-xl font-medium">${totalDebits.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground">Total Debits</p>
+              <p className="text-base font-medium">PKR {totalDebits.toLocaleString()}</p>
             </div>
           </div>
           
-          <div className="bg-secondary p-4 rounded-lg flex items-center gap-3">
-            <div className="p-2.5 bg-primary/20 rounded-full">
-              <Wallet className="h-5 w-5 text-primary" />
+          <div className="bg-secondary p-3 rounded-lg flex items-center gap-3">
+            <div className="p-2 bg-primary/20 rounded-full">
+              <Wallet className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Current Balance</p>
-              <p className="text-xl font-medium">${currentBalance.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground">Current Balance</p>
+              <p className="text-base font-medium">PKR {currentBalance.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -77,7 +80,7 @@ const SheetDataSummary = ({ isConnected, summary }: SheetDataSummaryProps) => {
                 <div key={category.name} className="space-y-1">
                   <div className="flex justify-between text-sm">
                     <span>{category.name}</span>
-                    <span>${category.spent.toFixed(2)} / ${category.limit.toFixed(2)}</span>
+                    <span>PKR {category.spent.toLocaleString()} / PKR {category.limit.toLocaleString()}</span>
                   </div>
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <div 
