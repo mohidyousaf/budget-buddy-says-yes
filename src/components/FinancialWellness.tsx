@@ -53,7 +53,7 @@ const FinancialWellness = ({ sheetData }: FinancialWellnessProps) => {
             </div>
           </div>
           
-          <Progress value={wellness.score} className="w-full h-2" indicatorClassName={getProgressColor()} />
+          <Progress value={wellness.score} className={`w-full h-2 ${getProgressColor()}`} />
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">

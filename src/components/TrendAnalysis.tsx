@@ -2,7 +2,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { SheetData, analyzeSpendingTrends } from "@/services/sheetService";
-import { ArrowTrendingUpIcon, ArrowTrendingDownIcon } from "lucide-react";
+import { TrendingUp, TrendingDown } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 type TrendAnalysisProps = {
@@ -84,8 +84,8 @@ const TrendAnalysis = ({ sheetData }: TrendAnalysisProps) => {
                   <div key={index} className="flex items-start gap-2">
                     <div className={`p-1 rounded-full mt-0.5 ${isIncrease ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}`}>
                       {isIncrease ? 
-                        <ArrowTrendingUpIcon className="h-4 w-4" /> : 
-                        <ArrowTrendingDownIcon className="h-4 w-4" />
+                        <TrendingUp className="h-4 w-4" /> : 
+                        <TrendingDown className="h-4 w-4" />
                       }
                     </div>
                     <p className="text-sm text-muted-foreground">{trend.message}</p>

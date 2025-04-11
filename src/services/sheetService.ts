@@ -52,9 +52,7 @@ export type SheetData = {
 export const getSavedSheetUrl = async (): Promise<string | null> => {
   try {
     // Use the Supabase RPC function to fetch sheet URL
-    const { data, error } = await supabase
-      .rpc('get_sheet_url')
-      .single();
+    const { data, error } = await supabase.rpc('get_sheet_url');
     
     if (error) {
       console.error("Error fetching saved sheet URL:", error);
@@ -62,7 +60,12 @@ export const getSavedSheetUrl = async (): Promise<string | null> => {
       return localStorage.getItem('sheetUrl');
     }
     
-    return data?.sheet_url || localStorage.getItem('sheetUrl');
+    if (data && data.length > 0) {
+      return data[0]?.sheet_url || localStorage.getItem('sheetUrl');
+    }
+    
+    // Fallback to localStorage if no data
+    return localStorage.getItem('sheetUrl');
   } catch (error) {
     console.error("Error fetching saved sheet URL:", error);
     // Fallback to localStorage
@@ -77,11 +80,10 @@ export const saveSheetUrl = async (url: string): Promise<void> => {
     localStorage.setItem('sheetUrl', url);
     
     // Use the Supabase RPC function to save sheet URL
-    const { error } = await supabase
-      .rpc('save_sheet_url', { 
-        p_id: 'default', 
-        p_url: url 
-      });
+    const { error } = await supabase.rpc('save_sheet_url', { 
+      p_id: 'default', 
+      p_url: url 
+    });
     
     if (error) throw error;
   } catch (error) {
