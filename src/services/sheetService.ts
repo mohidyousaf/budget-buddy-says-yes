@@ -49,24 +49,11 @@ export type SheetData = {
   }>;
 };
 
-// Type definitions for RPC functions
-type GetSheetUrlResponse = {
-  sheet_url: string | null;
-};
-
-type SaveSheetUrlParams = {
-  p_id: string;
-  p_url: string;
-};
-
-// Fetch saved sheet URL from localStorage as a fallback
+// Fetch saved sheet URL from Supabase
 export const getSavedSheetUrl = async (): Promise<string | null> => {
   try {
-    // Use the Supabase RPC function to fetch sheet URL with proper typing
-    const { data, error } = await supabase.rpc('get_sheet_url') as {
-      data: GetSheetUrlResponse | null;
-      error: any;
-    };
+    // Use the Supabase RPC function to fetch sheet URL
+    const { data, error } = await supabase.rpc('get_sheet_url');
     
     if (error) {
       console.error("Error fetching saved sheet URL:", error);
@@ -74,8 +61,8 @@ export const getSavedSheetUrl = async (): Promise<string | null> => {
       return localStorage.getItem('sheetUrl');
     }
     
-    if (data) {
-      return data.sheet_url || localStorage.getItem('sheetUrl');
+    if (data && data.sheet_url) {
+      return data.sheet_url;
     }
     
     // Fallback to localStorage if no data
@@ -97,7 +84,7 @@ export const saveSheetUrl = async (url: string): Promise<void> => {
     const { error } = await supabase.rpc('save_sheet_url', {
       p_id: 'default',
       p_url: url
-    }) as { error: any };
+    });
     
     if (error) throw error;
   } catch (error) {
@@ -106,100 +93,159 @@ export const saveSheetUrl = async (url: string): Promise<void> => {
   }
 };
 
-// Function to fetch and parse Google Sheet data
+// Function to fetch and parse Google Sheet data from Supabase
 export const fetchSheetData = async (url: string): Promise<SheetData> => {
   // Save the URL for future use
   await saveSheetUrl(url);
   
-  // In a real app, this would connect to the Google Sheets API
-  // For demo purposes, we'll simulate a network request
-  
-  return new Promise((resolve) => {
-    // Simulate API delay
-    setTimeout(() => {
-      // Updated mock data based on user's latest information - March 2025
-      const mockData: SheetData = {
-        credits: [
-          { description: "INFLOW", amount: 378000 }
-        ],
-        debits: [
-          { description: "car", amount: 7000, date: "2025-03-15", type: "Car", expenseType: "Fixed" },
-          { description: "shopping", amount: 55400, date: "2025-03-10", type: "Shopping", expenseType: "Discretionary" },
-          { description: "Petrol", amount: 6000, date: "2025-03-05", type: "Petrol", expenseType: "Fixed" },
-          { description: "FixedCost", amount: 24000, date: "2025-03-20", type: "FixedCost", expenseType: "Fixed" },
-          { description: "Food", amount: 2500, date: "2025-03-13", type: "Food", expenseType: "Fixed" },
-          { description: "Entertainment", amount: 0, date: "2025-03-13", type: "Entertainment", expenseType: "Discretionary" },
-          { description: "Grocery", amount: 6595, date: "2025-03-13", type: "Grocery", expenseType: "Fixed" },
-          { description: "Payable", amount: 169748, date: "2025-03-13", type: "Payable", expenseType: "Fixed" },
-          { description: "Grooming", amount: 0, date: "2025-03-13", type: "Grooming", expenseType: "Discretionary" },
-          { description: "Loans", amount: 0, date: "2025-03-13", type: "Loans", expenseType: "Fixed" },
-          { description: "Cat", amount: 7200, date: "2025-03-13", type: "Cat", expenseType: "Fixed" },
-          { description: "umrah", amount: 0, date: "2025-03-13", type: "umrah", expenseType: "Discretionary" },
-          { description: "Shadi", amount: 12000, date: "2025-03-13", type: "Shadi", expenseType: "Variable" },
-          { description: "noor", amount: 68256, date: "2025-03-20", type: "noor", expenseType: "Variable" },
-        ],
-        categories: [
-          { name: "Car", spent: 7000, limit: 5000, remaining: -2000 },
-          { name: "Shopping", spent: 55400, limit: 8000, remaining: -47400 },
-          { name: "Petrol", spent: 6000, limit: 20000, remaining: 14000 },
-          { name: "FixedCost", spent: 24000, limit: 15000, remaining: -9000 },
-          { name: "Food", spent: 2500, limit: 8000, remaining: 5500 },
-          { name: "Entertainment", spent: 0, limit: 4000, remaining: 4000 },
-          { name: "Grocery", spent: 6595, limit: 40000, remaining: 33405 },
-          { name: "Payable", spent: 169748, limit: 85000, remaining: -84748 },
-          { name: "Grooming", spent: 0, limit: 5000, remaining: 5000 },
-          { name: "Loans", spent: 0, limit: 0, remaining: 0 },
-          { name: "Cat", spent: 7200, limit: 0, remaining: -7200 },
-          { name: "umrah", spent: 0, limit: 190000, remaining: 190000 },
-          { name: "Shadi", spent: 12000, limit: 0, remaining: -12000 },
-          { name: "noor", spent: 68256, limit: 0, remaining: -68256 },
-        ],
-        summary: {
-          totalCredits: 378000,
-          totalDebits: 350604,
-          currentBalance: 1596612,
-          inflow: 378000,
-          outflow: 350604,
-          net: 27396,
-          month: "March 2025",
-          cashInHand: 1577311
-        },
-        // Added historical data for trend analysis
-        historicalData: {
-          months: ["Jan 2025", "Feb 2025", "Mar 2025"],
-          spending: {
-            "Car": { "Jan 2025": 6500, "Feb 2025": 6800, "Mar 2025": 7000 },
-            "Shopping": { "Jan 2025": 42000, "Feb 2025": 48000, "Mar 2025": 55400 },
-            "Petrol": { "Jan 2025": 5800, "Feb 2025": 5900, "Mar 2025": 6000 },
-            "FixedCost": { "Jan 2025": 20000, "Feb 2025": 22000, "Mar 2025": 24000 },
-            "Food": { "Jan 2025": 3000, "Feb 2025": 2800, "Mar 2025": 2500 },
-            "Entertainment": { "Jan 2025": 2000, "Feb 2025": 1000, "Mar 2025": 0 },
-            "Grocery": { "Jan 2025": 6000, "Feb 2025": 6200, "Mar 2025": 6595 },
-            "Payable": { "Jan 2025": 145000, "Feb 2025": 155000, "Mar 2025": 169748 },
-            "Cat": { "Jan 2025": 6800, "Feb 2025": 7000, "Mar 2025": 7200 },
-            "Shadi": { "Jan 2025": 10000, "Feb 2025": 11000, "Mar 2025": 12000 },
-            "noor": { "Jan 2025": 65000, "Feb 2025": 67000, "Mar 2025": 68256 }
-          },
-          income: { "Jan 2025": 360000, "Feb 2025": 370000, "Mar 2025": 378000 }
-        },
-        // Added asset data
-        assets: [
-          { type: "Savings", value: 2500000, growth: 0.03 },
-          { type: "Investments", value: 1200000, growth: 0.07 },
-          { type: "Property", value: 8000000, growth: 0.05 }
-        ],
-        // Added special expenses
-        specialExpenses: [
-          { type: "renovation", amount: 800000, date: "2025-01-10" },
-          { type: "Shadi", amount: 1200000, date: "2024-12-15" },
-          { type: "umrah", amount: 650000, date: "2025-02-05" }
-        ]
-      };
-
-      toast.success("Balance sheet data loaded for " + mockData.summary.month);
-      resolve(mockData);
-    }, 1500);
-  });
+  try {
+    // Get the current date to determine the current month and year
+    const currentDate = new Date();
+    const currentMonth = currentDate.toLocaleString('default', { month: 'long' });
+    const currentYear = currentDate.getFullYear();
+    
+    // Fetch historical financial data from Supabase
+    const { data: financialData, error: financialDataError } = await supabase
+      .from('financial_data')
+      .select('*')
+      .order('year', { ascending: true })
+      .order('month', { ascending: true });
+    
+    if (financialDataError) {
+      throw financialDataError;
+    }
+    
+    // Fetch all category data
+    const { data: categoryData, error: categoryDataError } = await supabase
+      .from('category_data')
+      .select('*, financial_data(month, year)');
+    
+    if (categoryDataError) {
+      throw categoryDataError;
+    }
+    
+    // Find the current month's financial data
+    const currentMonthData = financialData?.find(
+      (data) => data.month === currentMonth && data.year === currentYear
+    ) || financialData?.[financialData.length - 1]; // Fallback to latest
+    
+    if (!currentMonthData) {
+      throw new Error("No financial data available");
+    }
+    
+    // Get categories for the current month
+    const currentMonthCategories = categoryData?.filter(
+      (cat) => cat.financial_data_id === currentMonthData.id
+    ) || [];
+    
+    // Transform Supabase data into the SheetData format
+    const categories = currentMonthCategories.map((cat) => ({
+      name: cat.name,
+      spent: Number(cat.spent),
+      limit: Number(cat.budget_limit),
+      remaining: Number(cat.remaining)
+    }));
+    
+    // Create historical data structure
+    const months: string[] = [];
+    const spending: Record<string, Record<string, number>> = {};
+    const income: Record<string, number> = {};
+    
+    // Process each month's data
+    financialData?.forEach((fd) => {
+      const monthYear = `${fd.month} ${fd.year}`;
+      months.push(monthYear);
+      income[monthYear] = Number(fd.total_credits);
+      
+      // Get categories for this month
+      const monthCategories = categoryData?.filter(
+        (cat) => cat.financial_data_id === fd.id
+      ) || [];
+      
+      // Add spending data for each category
+      monthCategories.forEach((cat) => {
+        if (!spending[cat.name]) {
+          spending[cat.name] = {};
+        }
+        spending[cat.name][monthYear] = Number(cat.spent);
+      });
+    });
+    
+    // Get transactions for the current month
+    const { data: transactions, error: transactionsError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('financial_data_id', currentMonthData.id);
+    
+    if (transactionsError) {
+      throw transactionsError;
+    }
+    
+    // Create credits and debits arrays
+    const credits = transactions
+      ?.filter((tx) => tx.transaction_type === 'credit')
+      .map((tx) => ({
+        description: tx.description,
+        amount: Number(tx.amount)
+      })) || [{ description: "INFLOW", amount: Number(currentMonthData.total_credits) }];
+    
+    const debits = transactions
+      ?.filter((tx) => tx.transaction_type === 'debit')
+      .map((tx) => ({
+        description: tx.description,
+        amount: Number(tx.amount),
+        date: tx.transaction_date,
+        type: tx.category || "Other",
+        expenseType: tx.expense_type || "Fixed"
+      })) || [];
+    
+    // Mock assets and special expenses since they're not in the database yet
+    const assets = [
+      { type: "Savings", value: 2500000, growth: 0.03 },
+      { type: "Investments", value: 1200000, growth: 0.07 },
+      { type: "Property", value: 8000000, growth: 0.05 }
+    ];
+    
+    const specialExpenses = [
+      { type: "renovation", amount: 800000, date: "2025-01-10" },
+      { type: "Shadi", amount: 1200000, date: "2024-12-15" },
+      { type: "umrah", amount: 650000, date: "2025-02-05" }
+    ];
+    
+    // Create the full SheetData object
+    const sheetData: SheetData = {
+      credits,
+      debits,
+      categories,
+      summary: {
+        totalCredits: Number(currentMonthData.total_credits),
+        totalDebits: Number(currentMonthData.total_debits),
+        currentBalance: Number(currentMonthData.current_balance),
+        inflow: Number(currentMonthData.total_credits),
+        outflow: Number(currentMonthData.total_debits),
+        net: Number(currentMonthData.total_credits) - Number(currentMonthData.total_debits),
+        month: `${currentMonthData.month} ${currentMonthData.year}`,
+        cashInHand: Number(currentMonthData.cash_in_hand)
+      },
+      historicalData: {
+        months,
+        spending,
+        income
+      },
+      assets,
+      specialExpenses
+    };
+    
+    toast.success(`Balance sheet data loaded for ${sheetData.summary.month}`);
+    return sheetData;
+    
+  } catch (error) {
+    console.error("Error fetching sheet data from Supabase:", error);
+    toast.error("Failed to load balance sheet data");
+    
+    // Return mock data as fallback
+    return mockFallbackData();
+  }
 };
 
 // Helper function to get category spending information
@@ -323,3 +369,81 @@ export const getFilteredTrendData = (sheetData: SheetData, monthsToShow: number)
   
   return { filteredMonths, filteredSpending };
 };
+
+// Fallback mock data function in case of errors
+function mockFallbackData(): SheetData {
+  return {
+    credits: [
+      { description: "INFLOW", amount: 378000 }
+    ],
+    debits: [
+      { description: "car", amount: 7000, date: "2025-03-15", type: "Car", expenseType: "Fixed" },
+      { description: "shopping", amount: 55400, date: "2025-03-10", type: "Shopping", expenseType: "Discretionary" },
+      { description: "Petrol", amount: 6000, date: "2025-03-05", type: "Petrol", expenseType: "Fixed" },
+      { description: "FixedCost", amount: 24000, date: "2025-03-20", type: "FixedCost", expenseType: "Fixed" },
+      { description: "Food", amount: 2500, date: "2025-03-13", type: "Food", expenseType: "Fixed" },
+      { description: "Entertainment", amount: 0, date: "2025-03-13", type: "Entertainment", expenseType: "Discretionary" },
+      { description: "Grocery", amount: 6595, date: "2025-03-13", type: "Grocery", expenseType: "Fixed" },
+      { description: "Payable", amount: 169748, date: "2025-03-13", type: "Payable", expenseType: "Fixed" },
+      { description: "Grooming", amount: 0, date: "2025-03-13", type: "Grooming", expenseType: "Discretionary" },
+      { description: "Loans", amount: 0, date: "2025-03-13", type: "Loans", expenseType: "Fixed" },
+      { description: "Cat", amount: 7200, date: "2025-03-13", type: "Cat", expenseType: "Fixed" },
+      { description: "umrah", amount: 0, date: "2025-03-13", type: "umrah", expenseType: "Discretionary" },
+      { description: "Shadi", amount: 12000, date: "2025-03-13", type: "Shadi", expenseType: "Variable" },
+      { description: "noor", amount: 68256, date: "2025-03-20", type: "noor", expenseType: "Variable" },
+    ],
+    categories: [
+      { name: "Car", spent: 7000, limit: 5000, remaining: -2000 },
+      { name: "Shopping", spent: 55400, limit: 8000, remaining: -47400 },
+      { name: "Petrol", spent: 6000, limit: 20000, remaining: 14000 },
+      { name: "FixedCost", spent: 24000, limit: 15000, remaining: -9000 },
+      { name: "Food", spent: 2500, limit: 8000, remaining: 5500 },
+      { name: "Entertainment", spent: 0, limit: 4000, remaining: 4000 },
+      { name: "Grocery", spent: 6595, limit: 40000, remaining: 33405 },
+      { name: "Payable", spent: 169748, limit: 85000, remaining: -84748 },
+      { name: "Grooming", spent: 0, limit: 5000, remaining: 5000 },
+      { name: "Loans", spent: 0, limit: 0, remaining: 0 },
+      { name: "Cat", spent: 7200, limit: 0, remaining: -7200 },
+      { name: "umrah", spent: 0, limit: 190000, remaining: 190000 },
+      { name: "Shadi", spent: 12000, limit: 0, remaining: -12000 },
+      { name: "noor", spent: 68256, limit: 0, remaining: -68256 },
+    ],
+    summary: {
+      totalCredits: 378000,
+      totalDebits: 350604,
+      currentBalance: 1596612,
+      inflow: 378000,
+      outflow: 350604,
+      net: 27396,
+      month: "March 2025",
+      cashInHand: 1577311
+    },
+    historicalData: {
+      months: ["Jan 2025", "Feb 2025", "Mar 2025"],
+      spending: {
+        "Car": { "Jan 2025": 6500, "Feb 2025": 6800, "Mar 2025": 7000 },
+        "Shopping": { "Jan 2025": 42000, "Feb 2025": 48000, "Mar 2025": 55400 },
+        "Petrol": { "Jan 2025": 5800, "Feb 2025": 5900, "Mar 2025": 6000 },
+        "FixedCost": { "Jan 2025": 20000, "Feb 2025": 22000, "Mar 2025": 24000 },
+        "Food": { "Jan 2025": 3000, "Feb 2025": 2800, "Mar 2025": 2500 },
+        "Entertainment": { "Jan 2025": 2000, "Feb 2025": 1000, "Mar 2025": 0 },
+        "Grocery": { "Jan 2025": 6000, "Feb 2025": 6200, "Mar 2025": 6595 },
+        "Payable": { "Jan 2025": 145000, "Feb 2025": 155000, "Mar 2025": 169748 },
+        "Cat": { "Jan 2025": 6800, "Feb 2025": 7000, "Mar 2025": 7200 },
+        "Shadi": { "Jan 2025": 10000, "Feb 2025": 11000, "Mar 2025": 12000 },
+        "noor": { "Jan 2025": 65000, "Feb 2025": 67000, "Mar 2025": 68256 }
+      },
+      income: { "Jan 2025": 360000, "Feb 2025": 370000, "Mar 2025": 378000 }
+    },
+    assets: [
+      { type: "Savings", value: 2500000, growth: 0.03 },
+      { type: "Investments", value: 1200000, growth: 0.07 },
+      { type: "Property", value: 8000000, growth: 0.05 }
+    ],
+    specialExpenses: [
+      { type: "renovation", amount: 800000, date: "2025-01-10" },
+      { type: "Shadi", amount: 1200000, date: "2024-12-15" },
+      { type: "umrah", amount: 650000, date: "2025-02-05" }
+    ]
+  };
+}

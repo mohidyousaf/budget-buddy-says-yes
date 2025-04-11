@@ -9,6 +9,77 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      category_data: {
+        Row: {
+          budget_limit: number
+          created_at: string
+          financial_data_id: string
+          id: string
+          name: string
+          remaining: number
+          spent: number
+        }
+        Insert: {
+          budget_limit?: number
+          created_at?: string
+          financial_data_id: string
+          id?: string
+          name: string
+          remaining?: number
+          spent?: number
+        }
+        Update: {
+          budget_limit?: number
+          created_at?: string
+          financial_data_id?: string
+          id?: string
+          name?: string
+          remaining?: number
+          spent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_data_financial_data_id_fkey"
+            columns: ["financial_data_id"]
+            isOneToOne: false
+            referencedRelation: "financial_data"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_data: {
+        Row: {
+          cash_in_hand: number
+          created_at: string
+          current_balance: number
+          id: string
+          month: string
+          total_credits: number
+          total_debits: number
+          year: number
+        }
+        Insert: {
+          cash_in_hand?: number
+          created_at?: string
+          current_balance?: number
+          id?: string
+          month: string
+          total_credits?: number
+          total_debits?: number
+          year: number
+        }
+        Update: {
+          cash_in_hand?: number
+          created_at?: string
+          current_balance?: number
+          id?: string
+          month?: string
+          total_credits?: number
+          total_debits?: number
+          year?: number
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           address: string
@@ -87,12 +158,86 @@ export type Database = {
         }
         Relationships: []
       }
+      transactions: {
+        Row: {
+          amount: number
+          category: string | null
+          created_at: string
+          description: string
+          expense_type: string | null
+          financial_data_id: string
+          id: string
+          transaction_date: string
+          transaction_type: string
+        }
+        Insert: {
+          amount: number
+          category?: string | null
+          created_at?: string
+          description: string
+          expense_type?: string | null
+          financial_data_id: string
+          id?: string
+          transaction_date: string
+          transaction_type: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          description?: string
+          expense_type?: string | null
+          financial_data_id?: string
+          id?: string
+          transaction_date?: string
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_financial_data_id_fkey"
+            columns: ["financial_data_id"]
+            isOneToOne: false
+            referencedRelation: "financial_data"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_settings: {
+        Row: {
+          created_at: string
+          id: string
+          sheet_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          sheet_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          sheet_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_sheet_url: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          sheet_url: string
+        }[]
+      }
+      save_sheet_url: {
+        Args: { p_id: string; p_url: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

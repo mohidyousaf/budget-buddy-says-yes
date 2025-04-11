@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { SheetData, analyzeSpendingTrends, getFilteredTrendData } from "@/services/sheetService";
@@ -14,7 +14,7 @@ type TrendAnalysisProps = {
 
 const TrendAnalysis = ({ sheetData }: TrendAnalysisProps) => {
   const isMobile = useIsMobile();
-  const [monthsToShow, setMonthsToShow] = useState(3); // Default to showing all available months
+  const [monthsToShow, setMonthsToShow] = useState(3); // Default to showing 3 months
   const trends = analyzeSpendingTrends(sheetData);
   const maxMonths = sheetData.historicalData.months.length;
   
@@ -23,7 +23,7 @@ const TrendAnalysis = ({ sheetData }: TrendAnalysisProps) => {
   
   // Prepare data for the chart
   const chartData = filteredMonths.map((month) => {
-    const dataPoint: any = { month };
+    const dataPoint: { [key: string]: string | number } = { month };
     
     // Add top categories by spending
     const topCategories = [...sheetData.categories]
