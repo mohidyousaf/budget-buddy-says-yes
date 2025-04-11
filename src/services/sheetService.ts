@@ -37,8 +37,8 @@ export const getSavedSheetUrl = async (): Promise<string | null> => {
     // Use the Supabase REST API directly to avoid TypeScript errors
     // Since the user_settings table is not in the generated types yet
     const { data, error } = await supabase
-      .rpc('get_sheet_url', {}) // Custom RPC function we'll create
-      .select();
+      .rpc('get_sheet_url')
+      .single();
     
     if (error) {
       console.error("Error fetching saved sheet URL:", error);
@@ -46,12 +46,7 @@ export const getSavedSheetUrl = async (): Promise<string | null> => {
       return localStorage.getItem('sheetUrl');
     }
     
-    if (data && data.length > 0 && data[0].sheet_url) {
-      return data[0].sheet_url;
-    }
-    
-    // Fallback to localStorage
-    return localStorage.getItem('sheetUrl');
+    return data?.sheet_url || localStorage.getItem('sheetUrl');
   } catch (error) {
     console.error("Error fetching saved sheet URL:", error);
     // Fallback to localStorage
