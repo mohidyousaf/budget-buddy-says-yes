@@ -1,9 +1,12 @@
 
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { SheetData, analyzeSpendingTrends } from "@/services/sheetService";
+import { SheetData, analyzeSpendingTrends, getFilteredTrendData } from "@/services/sheetService";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 type TrendAnalysisProps = {
   sheetData: SheetData;
@@ -11,20 +14,25 @@ type TrendAnalysisProps = {
 
 const TrendAnalysis = ({ sheetData }: TrendAnalysisProps) => {
   const isMobile = useIsMobile();
+  const [monthsToShow, setMonthsToShow] = useState(3); // Default to showing all available months
   const trends = analyzeSpendingTrends(sheetData);
+  const maxMonths = sheetData.historicalData.months.length;
+  
+  // Get filtered months based on selection
+  const { filteredMonths, filteredSpending } = getFilteredTrendData(sheetData, monthsToShow);
   
   // Prepare data for the chart
-  const chartData = sheetData.historicalData.months.map((month) => {
+  const chartData = filteredMonths.map((month) => {
     const dataPoint: any = { month };
     
-    // Add top 5 categories by spending
+    // Add top categories by spending
     const topCategories = [...sheetData.categories]
       .sort((a, b) => b.spent - a.spent)
       .slice(0, isMobile ? 3 : 5);
     
     topCategories.forEach((category) => {
-      if (sheetData.historicalData.spending[category.name]) {
-        dataPoint[category.name] = sheetData.historicalData.spending[category.name][month] || 0;
+      if (filteredSpending[category.name] && filteredSpending[category.name][month]) {
+        dataPoint[category.name] = filteredSpending[category.name][month] || 0;
       }
     });
     
@@ -33,15 +41,40 @@ const TrendAnalysis = ({ sheetData }: TrendAnalysisProps) => {
   
   const colors = ["#2563eb", "#dc2626", "#16a34a", "#eab308", "#8b5cf6"];
   
+  // Handle month selection change
+  const handleMonthsChange = (value: string) => {
+    setMonthsToShow(Number(value));
+  };
+  
   return (
     <Card>
       <CardHeader className={isMobile ? "px-4 pt-4 pb-2" : undefined}>
-        <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
-          Spending Trends
-        </CardTitle>
-        <CardDescription>
-          How your spending has changed over time
-        </CardDescription>
+        <div className="flex flex-col md:flex-row justify-between md:items-center gap-2">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
+              Spending Trends
+            </CardTitle>
+            <CardDescription>
+              How your spending has changed over time
+            </CardDescription>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Label htmlFor="months-select">Show:</Label>
+            <Select value={monthsToShow.toString()} onValueChange={handleMonthsChange}>
+              <SelectTrigger id="months-select" className="w-[140px]">
+                <SelectValue placeholder="Select months" />
+              </SelectTrigger>
+              <SelectContent>
+                {[...Array(maxMonths)].map((_, i) => (
+                  <SelectItem key={i + 1} value={(i + 1).toString()}>
+                    Last {i + 1} {i === 0 ? "month" : "months"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </CardHeader>
       
       <CardContent className={`space-y-6 ${isMobile ? "px-2 pb-4 pt-2" : undefined}`}>

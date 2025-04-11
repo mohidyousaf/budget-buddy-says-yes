@@ -29,8 +29,9 @@ export type SheetData = {
     outflow: number;
     net: number;
     month: string; // Added to track the current month
+    cashInHand: number;
   };
-  // New fields to track historical data
+  // Historical data for trend analysis
   historicalData: {
     months: string[];
     spending: Record<string, Record<string, number>>;
@@ -48,23 +49,24 @@ export type SheetData = {
   }>;
 };
 
-// Interface for the get_sheet_url RPC function response
-interface GetSheetUrlResponse {
-  id: string;
+// Type definitions for RPC functions
+type GetSheetUrlResponse = {
   sheet_url: string | null;
-}
+};
 
-// Interface for the save_sheet_url RPC function parameters
-interface SaveSheetUrlParams {
+type SaveSheetUrlParams = {
   p_id: string;
   p_url: string;
-}
+};
 
 // Fetch saved sheet URL from localStorage as a fallback
 export const getSavedSheetUrl = async (): Promise<string | null> => {
   try {
     // Use the Supabase RPC function to fetch sheet URL with proper typing
-    const { data, error } = await supabase.rpc<GetSheetUrlResponse[], null>('get_sheet_url');
+    const { data, error } = await supabase.rpc('get_sheet_url') as {
+      data: GetSheetUrlResponse | null;
+      error: any;
+    };
     
     if (error) {
       console.error("Error fetching saved sheet URL:", error);
@@ -72,8 +74,8 @@ export const getSavedSheetUrl = async (): Promise<string | null> => {
       return localStorage.getItem('sheetUrl');
     }
     
-    if (data && data.length > 0) {
-      return data[0]?.sheet_url || localStorage.getItem('sheetUrl');
+    if (data) {
+      return data.sheet_url || localStorage.getItem('sheetUrl');
     }
     
     // Fallback to localStorage if no data
@@ -91,11 +93,11 @@ export const saveSheetUrl = async (url: string): Promise<void> => {
     // Save to localStorage as fallback
     localStorage.setItem('sheetUrl', url);
     
-    // Use the Supabase RPC function to save sheet URL with proper typing
-    const { error } = await supabase.rpc<null, SaveSheetUrlParams>('save_sheet_url', {
+    // Use the Supabase RPC function to save sheet URL
+    const { error } = await supabase.rpc('save_sheet_url', {
       p_id: 'default',
       p_url: url
-    });
+    }) as { error: any };
     
     if (error) throw error;
   } catch (error) {
@@ -118,54 +120,67 @@ export const fetchSheetData = async (url: string): Promise<SheetData> => {
       // Updated mock data based on user's latest information - March 2025
       const mockData: SheetData = {
         credits: [
-          { description: "salary", amount: 322000 }
+          { description: "INFLOW", amount: 378000 }
         ],
         debits: [
-          { description: "shopping", amount: 55400, date: "2025-03-15", type: "Shopping", expenseType: "Discretionary" },
-          { description: "car", amount: 7000, date: "2025-03-10", type: "Car", expenseType: "Fixed" },
-          { description: "cat", amount: 7200, date: "2025-03-05", type: "Pets", expenseType: "Fixed" },
-          { description: "noor", amount: 68256, date: "2025-03-20", type: "Education", expenseType: "Fixed" },
-          { description: "domestic", amount: 25000, date: "2025-03-13", type: "Utilities", expenseType: "Fixed" },
-          { description: "shipping", amount: 35000, date: "2025-03-13", type: "Shipping", expenseType: "Fixed" },
-          { description: "food", amount: 5000, date: "2025-03-13", type: "Food", expenseType: "Fixed" },
-          { description: "entertainment", amount: 3000, date: "2025-03-13", type: "Entertainment", expenseType: "Discretionary" },
-          { description: "grocery", amount: 10000, date: "2025-03-13", type: "Grocery", expenseType: "Fixed" },
+          { description: "car", amount: 7000, date: "2025-03-15", type: "Car", expenseType: "Fixed" },
+          { description: "shopping", amount: 55400, date: "2025-03-10", type: "Shopping", expenseType: "Discretionary" },
+          { description: "Petrol", amount: 6000, date: "2025-03-05", type: "Petrol", expenseType: "Fixed" },
+          { description: "FixedCost", amount: 24000, date: "2025-03-20", type: "FixedCost", expenseType: "Fixed" },
+          { description: "Food", amount: 2500, date: "2025-03-13", type: "Food", expenseType: "Fixed" },
+          { description: "Entertainment", amount: 0, date: "2025-03-13", type: "Entertainment", expenseType: "Discretionary" },
+          { description: "Grocery", amount: 6595, date: "2025-03-13", type: "Grocery", expenseType: "Fixed" },
+          { description: "Payable", amount: 169748, date: "2025-03-13", type: "Payable", expenseType: "Fixed" },
+          { description: "Grooming", amount: 0, date: "2025-03-13", type: "Grooming", expenseType: "Discretionary" },
+          { description: "Loans", amount: 0, date: "2025-03-13", type: "Loans", expenseType: "Fixed" },
+          { description: "Cat", amount: 7200, date: "2025-03-13", type: "Cat", expenseType: "Fixed" },
+          { description: "umrah", amount: 0, date: "2025-03-13", type: "umrah", expenseType: "Discretionary" },
+          { description: "Shadi", amount: 12000, date: "2025-03-13", type: "Shadi", expenseType: "Variable" },
+          { description: "noor", amount: 68256, date: "2025-03-20", type: "noor", expenseType: "Variable" },
         ],
         categories: [
-          { name: "Car", spent: 7000, limit: 10000, remaining: 3000 },
-          { name: "Pets", spent: 7200, limit: 10000, remaining: 2800 },
-          { name: "Shopping", spent: 55400, limit: 60000, remaining: 4600 },
-          { name: "Education", spent: 68256, limit: 70000, remaining: 1744 },
-          { name: "Shipping", spent: 35000, limit: 40000, remaining: 5000 },
-          { name: "Food", spent: 5000, limit: 20000, remaining: 15000 },
-          { name: "Entertainment", spent: 3000, limit: 4000, remaining: 1000 },
-          { name: "Grocery", spent: 10000, limit: 10000, remaining: 0 },
-          { name: "Utilities", spent: 25000, limit: 40000, remaining: 15000 },
+          { name: "Car", spent: 7000, limit: 5000, remaining: -2000 },
+          { name: "Shopping", spent: 55400, limit: 8000, remaining: -47400 },
+          { name: "Petrol", spent: 6000, limit: 20000, remaining: 14000 },
+          { name: "FixedCost", spent: 24000, limit: 15000, remaining: -9000 },
+          { name: "Food", spent: 2500, limit: 8000, remaining: 5500 },
+          { name: "Entertainment", spent: 0, limit: 4000, remaining: 4000 },
+          { name: "Grocery", spent: 6595, limit: 40000, remaining: 33405 },
+          { name: "Payable", spent: 169748, limit: 85000, remaining: -84748 },
+          { name: "Grooming", spent: 0, limit: 5000, remaining: 5000 },
+          { name: "Loans", spent: 0, limit: 0, remaining: 0 },
+          { name: "Cat", spent: 7200, limit: 0, remaining: -7200 },
+          { name: "umrah", spent: 0, limit: 190000, remaining: 190000 },
+          { name: "Shadi", spent: 12000, limit: 0, remaining: -12000 },
+          { name: "noor", spent: 68256, limit: 0, remaining: -68256 },
         ],
         summary: {
-          totalCredits: 322000,
-          totalDebits: 215856,
-          currentBalance: 1684144,
-          inflow: 322000,
-          outflow: 215856,
-          net: 106144,
-          month: "March 2025"
+          totalCredits: 378000,
+          totalDebits: 350604,
+          currentBalance: 1596612,
+          inflow: 378000,
+          outflow: 350604,
+          net: 27396,
+          month: "March 2025",
+          cashInHand: 1577311
         },
         // Added historical data for trend analysis
         historicalData: {
           months: ["Jan 2025", "Feb 2025", "Mar 2025"],
           spending: {
             "Car": { "Jan 2025": 6500, "Feb 2025": 6800, "Mar 2025": 7000 },
-            "Pets": { "Jan 2025": 5000, "Feb 2025": 6100, "Mar 2025": 7200 },
             "Shopping": { "Jan 2025": 42000, "Feb 2025": 48000, "Mar 2025": 55400 },
-            "Education": { "Jan 2025": 65000, "Feb 2025": 67000, "Mar 2025": 68256 },
-            "Shipping": { "Jan 2025": 32000, "Feb 2025": 33500, "Mar 2025": 35000 },
-            "Food": { "Jan 2025": 8000, "Feb 2025": 6500, "Mar 2025": 5000 },
-            "Entertainment": { "Jan 2025": 4500, "Feb 2025": 3800, "Mar 2025": 3000 },
-            "Grocery": { "Jan 2025": 12000, "Feb 2025": 11000, "Mar 2025": 10000 },
-            "Utilities": { "Jan 2025": 27000, "Feb 2025": 26000, "Mar 2025": 25000 }
+            "Petrol": { "Jan 2025": 5800, "Feb 2025": 5900, "Mar 2025": 6000 },
+            "FixedCost": { "Jan 2025": 20000, "Feb 2025": 22000, "Mar 2025": 24000 },
+            "Food": { "Jan 2025": 3000, "Feb 2025": 2800, "Mar 2025": 2500 },
+            "Entertainment": { "Jan 2025": 2000, "Feb 2025": 1000, "Mar 2025": 0 },
+            "Grocery": { "Jan 2025": 6000, "Feb 2025": 6200, "Mar 2025": 6595 },
+            "Payable": { "Jan 2025": 145000, "Feb 2025": 155000, "Mar 2025": 169748 },
+            "Cat": { "Jan 2025": 6800, "Feb 2025": 7000, "Mar 2025": 7200 },
+            "Shadi": { "Jan 2025": 10000, "Feb 2025": 11000, "Mar 2025": 12000 },
+            "noor": { "Jan 2025": 65000, "Feb 2025": 67000, "Mar 2025": 68256 }
           },
-          income: { "Jan 2025": 315000, "Feb 2025": 318000, "Mar 2025": 322000 }
+          income: { "Jan 2025": 360000, "Feb 2025": 370000, "Mar 2025": 378000 }
         },
         // Added asset data
         assets: [
@@ -175,9 +190,9 @@ export const fetchSheetData = async (url: string): Promise<SheetData> => {
         ],
         // Added special expenses
         specialExpenses: [
-          { type: "Wedding", amount: 1200000, date: "2024-12-15" },
-          { type: "Renovation", amount: 800000, date: "2025-01-10" },
-          { type: "Umrah", amount: 650000, date: "2025-02-05" }
+          { type: "renovation", amount: 800000, date: "2025-01-10" },
+          { type: "Shadi", amount: 1200000, date: "2024-12-15" },
+          { type: "umrah", amount: 650000, date: "2025-02-05" }
         ]
       };
 
@@ -203,7 +218,7 @@ export const getCategoryData = (sheetData: SheetData, categoryName: string) => {
   return category;
 };
 
-// New function to analyze spending trends
+// Function to analyze spending trends
 export const analyzeSpendingTrends = (sheetData: SheetData) => {
   const trends = [];
   
@@ -241,7 +256,7 @@ export const analyzeSpendingTrends = (sheetData: SheetData) => {
   return trends;
 };
 
-// New function to get financial wellness score (0-100)
+// Function to get financial wellness score (0-100)
 export const getFinancialWellnessScore = (sheetData: SheetData) => {
   // Factors to consider:
   // 1. Savings rate (income - expenses / income)
@@ -283,4 +298,28 @@ export const getFinancialWellnessScore = (sheetData: SheetData) => {
                    totalScore >= 60 ? "Good" :
                    totalScore >= 40 ? "Fair" : "Needs Improvement"
   };
+};
+
+// NEW: Function to filter trend data for selected months
+export const getFilteredTrendData = (sheetData: SheetData, monthsToShow: number): {
+  filteredMonths: string[];
+  filteredSpending: Record<string, Record<string, number>>;
+} => {
+  const allMonths = [...sheetData.historicalData.months];
+  const filteredMonths = allMonths.slice(-monthsToShow); // Get last n months
+  
+  // Create filtered spending data
+  const filteredSpending: Record<string, Record<string, number>> = {};
+  
+  Object.entries(sheetData.historicalData.spending).forEach(([category, monthlyData]) => {
+    filteredSpending[category] = {};
+    
+    filteredMonths.forEach(month => {
+      if (monthlyData[month] !== undefined) {
+        filteredSpending[category][month] = monthlyData[month];
+      }
+    });
+  });
+  
+  return { filteredMonths, filteredSpending };
 };
