@@ -64,7 +64,7 @@ interface SaveSheetUrlParams {
 export const getSavedSheetUrl = async (): Promise<string | null> => {
   try {
     // Use the Supabase RPC function to fetch sheet URL with proper typing
-    const { data, error } = await supabase.rpc<GetSheetUrlResponse[]>('get_sheet_url');
+    const { data, error } = await supabase.rpc<GetSheetUrlResponse[], null>('get_sheet_url');
     
     if (error) {
       console.error("Error fetching saved sheet URL:", error);
@@ -92,10 +92,10 @@ export const saveSheetUrl = async (url: string): Promise<void> => {
     localStorage.setItem('sheetUrl', url);
     
     // Use the Supabase RPC function to save sheet URL with proper typing
-    const { error } = await supabase.rpc('save_sheet_url', {
+    const { error } = await supabase.rpc<null, SaveSheetUrlParams>('save_sheet_url', {
       p_id: 'default',
       p_url: url
-    } as SaveSheetUrlParams);
+    });
     
     if (error) throw error;
   } catch (error) {
