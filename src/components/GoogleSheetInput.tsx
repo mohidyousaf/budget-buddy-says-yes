@@ -22,17 +22,17 @@ const GoogleSheetInput = ({ onSheetSubmit, isLoading }: GoogleSheetInputProps) =
   useEffect(() => {
     const checkSavedUrl = async () => {
       try {
+        console.log("Checking for saved sheet URL");
         let savedUrl = await getSavedSheetUrl();
         
-        // If no saved URL is found, use the default URL
-        if (!savedUrl) {
-          savedUrl = DEFAULT_SHEET_URL;
-          toast.info("Using default sheet URL");
-        } else {
-          toast.info("Using previously saved sheet URL");
-        }
+        // Always use the default URL to ensure we're getting the latest data
+        savedUrl = DEFAULT_SHEET_URL;
+        console.log("Using sheet URL:", savedUrl);
         
         setSheetUrl(savedUrl);
+        toast.info("Connecting to your balance sheet");
+        
+        // Automatically submit the sheet URL to load the latest data
         onSheetSubmit(savedUrl);
       } catch (error) {
         console.error("Error loading saved sheet URL:", error);
