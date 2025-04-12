@@ -61,7 +61,8 @@ export const getSavedSheetUrl = async (): Promise<string | null> => {
       return localStorage.getItem('sheetUrl');
     }
     
-    if (data) {
+    // Fix the property access - data might be null or have a different shape
+    if (data && typeof data === 'object') {
       return data.sheet_url;
     }
     
