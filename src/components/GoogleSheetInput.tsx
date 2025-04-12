@@ -14,7 +14,7 @@ type GoogleSheetInputProps = {
 };
 
 const GoogleSheetInput = ({ onSheetSubmit, isLoading }: GoogleSheetInputProps) => {
-  const [sheetUrl, setSheetUrl] = useState(DEFAULT_SHEET_URL);
+  const [sheetUrl, setSheetUrl] = useState<string>("");
   const [isLoadingSaved, setIsLoadingSaved] = useState(true);
   const isMobile = useIsMobile();
 
@@ -23,17 +23,16 @@ const GoogleSheetInput = ({ onSheetSubmit, isLoading }: GoogleSheetInputProps) =
     const checkSavedUrl = async () => {
       try {
         console.log("Checking for saved sheet URL");
-        let savedUrl = await getSavedSheetUrl();
+        const savedUrl = await getSavedSheetUrl();
+        const urlToUse = savedUrl || DEFAULT_SHEET_URL;
         
-        // Always use the default URL to ensure we're getting the latest data
-        savedUrl = DEFAULT_SHEET_URL;
-        console.log("Using sheet URL:", savedUrl);
+        console.log("Using sheet URL:", urlToUse);
         
-        setSheetUrl(savedUrl);
+        setSheetUrl(urlToUse);
         toast.info("Connecting to your balance sheet");
         
         // Automatically submit the sheet URL to load the latest data
-        onSheetSubmit(savedUrl);
+        onSheetSubmit(urlToUse);
       } catch (error) {
         console.error("Error loading saved sheet URL:", error);
         // Use default URL as fallback
@@ -52,7 +51,7 @@ const GoogleSheetInput = ({ onSheetSubmit, isLoading }: GoogleSheetInputProps) =
     e.preventDefault();
     
     // Basic validation for Google Sheets URL
-    if (!sheetUrl.includes("docs.google.com/spreadsheets")) {
+    if (!sheetUrl || !sheetUrl.includes("docs.google.com/spreadsheets")) {
       toast.error("Please enter a valid Google Sheets URL");
       return;
     }
