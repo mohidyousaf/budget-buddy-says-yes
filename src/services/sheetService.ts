@@ -1,6 +1,7 @@
+
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import Papa from "papaparse";
+import * as Papa from "papaparse";
 
 // Fetch saved sheet URL from Supabase
 export const getSavedSheetUrl = async (): Promise<string | null> => {
@@ -51,6 +52,8 @@ const parseGoogleSheetCSV = async (url: string): Promise<any> => {
     const sheetId = sheetIdMatch[1];
     const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
     
+    console.log("Fetching CSV from:", csvUrl);
+    
     const response = await fetch(csvUrl);
     if (!response.ok) {
       throw new Error("Failed to fetch Google Sheet data");
@@ -62,9 +65,11 @@ const parseGoogleSheetCSV = async (url: string): Promise<any> => {
       Papa.parse(csvText, {
         header: true,
         complete: (results) => {
+          console.log("Successfully parsed CSV data");
           resolve(results.data);
         },
         error: (error) => {
+          console.error("Error parsing CSV data:", error);
           reject(error);
         }
       });

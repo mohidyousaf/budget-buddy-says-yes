@@ -31,13 +31,17 @@ const GoogleSheetInput = ({ onSheetSubmit, isLoading }: GoogleSheetInputProps) =
         setSheetUrl(urlToUse);
         toast.info("Connecting to your balance sheet");
         
-        // Automatically submit the sheet URL to load the latest data
-        onSheetSubmit(urlToUse);
+        // Don't submit immediately - wait until dependencies are properly loaded
+        setTimeout(() => {
+          onSheetSubmit(urlToUse);
+        }, 500);
       } catch (error) {
         console.error("Error loading saved sheet URL:", error);
         // Use default URL as fallback
         setSheetUrl(DEFAULT_SHEET_URL);
-        onSheetSubmit(DEFAULT_SHEET_URL);
+        setTimeout(() => {
+          onSheetSubmit(DEFAULT_SHEET_URL);
+        }, 500);
         toast.info("Using default sheet URL");
       } finally {
         setIsLoadingSaved(false);
