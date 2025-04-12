@@ -1,6 +1,6 @@
-
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import Papa from "papaparse";
 
 // Enhanced data model based on user requirements
 export type SheetData = {
@@ -61,7 +61,7 @@ export const getSavedSheetUrl = async (): Promise<string | null> => {
       return localStorage.getItem('sheetUrl');
     }
     
-    if (data && data.sheet_url) {
+    if (data) {
       return data.sheet_url;
     }
     
@@ -93,17 +93,283 @@ export const saveSheetUrl = async (url: string): Promise<void> => {
   }
 };
 
-// Function to fetch and parse Google Sheet data from Supabase
-export const fetchSheetData = async (url: string): Promise<SheetData> => {
-  // Save the URL for future use
-  await saveSheetUrl(url);
-  
+// Function to parse Google Sheets CSV data
+const parseGoogleSheetCSV = async (url: string): Promise<any> => {
   try {
-    // Get the current date to determine the current month and year
-    const currentDate = new Date();
-    const currentMonth = currentDate.toLocaleString('default', { month: 'long' });
-    const currentYear = currentDate.getFullYear();
+    // Extract the sheet ID from the URL
+    const sheetIdMatch = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if (!sheetIdMatch) {
+      throw new Error("Invalid Google Sheet URL");
+    }
     
+    const sheetId = sheetIdMatch[1];
+    // Form the CSV export URL
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+    
+    // Fetch the CSV data
+    const response = await fetch(csvUrl);
+    if (!response.ok) {
+      throw new Error("Failed to fetch Google Sheet data");
+    }
+    
+    const csvText = await response.text();
+    
+    // Parse CSV using PapaParse
+    return new Promise((resolve, reject) => {
+      Papa.parse(csvText, {
+        header: true,
+        complete: (results) => {
+          resolve(results.data);
+        },
+        error: (error) => {
+          reject(error);
+        }
+      });
+    });
+  } catch (error) {
+    console.error("Error parsing Google Sheet:", error);
+    throw error;
+  }
+};
+
+// Function to get current month and year
+const getCurrentMonthYear = (): { month: string; year: number } => {
+  const date = new Date();
+  const month = date.toLocaleString('default', { month: 'long' });
+  const year = date.getFullYear();
+  return { month, year };
+};
+
+// Function to save current month data to Supabase
+const saveCurrentMonthToSupabase = async (
+  sheetData: any,
+  month: string,
+  year: number
+): Promise<void> => {
+  try {
+    // First check if this month already exists
+    const { data: existingMonth } = await supabase
+      .from('financial_data')
+      .select('id')
+      .eq('month', month)
+      .eq('year', year)
+      .single();
+    
+    // If it exists, update it instead of inserting
+    if (existingMonth) {
+      // Delete existing data for this month to replace with fresh data
+      await supabase
+        .from('category_data')
+        .delete()
+        .eq('financial_data_id', existingMonth.id);
+      
+      await supabase
+        .from('transactions')
+        .delete()
+        .eq('financial_data_id', existingMonth.id);
+      
+      // Update financial data summary
+      await supabase
+        .from('financial_data')
+        .update({
+          total_credits: sheetData.summary.totalCredits,
+          total_debits: sheetData.summary.totalDebits,
+          current_balance: sheetData.summary.currentBalance,
+          cash_in_hand: sheetData.summary.cashInHand
+        })
+        .eq('id', existingMonth.id);
+      
+      // Re-insert category data
+      for (const category of sheetData.categories) {
+        await supabase.from('category_data').insert({
+          financial_data_id: existingMonth.id,
+          name: category.name,
+          spent: category.spent,
+          budget_limit: category.limit,
+          remaining: category.remaining
+        });
+      }
+      
+      // Re-insert transactions
+      for (const debit of sheetData.debits) {
+        await supabase.from('transactions').insert({
+          financial_data_id: existingMonth.id,
+          description: debit.description,
+          amount: debit.amount,
+          transaction_type: 'debit',
+          category: debit.type,
+          expense_type: debit.expenseType,
+          transaction_date: debit.date
+        });
+      }
+      
+      for (const credit of sheetData.credits) {
+        await supabase.from('transactions').insert({
+          financial_data_id: existingMonth.id,
+          description: credit.description,
+          amount: credit.amount,
+          transaction_type: 'credit',
+          transaction_date: new Date().toISOString().split('T')[0]
+        });
+      }
+    } else {
+      // Insert new month data
+      const { data: newMonth, error } = await supabase
+        .from('financial_data')
+        .insert({
+          month,
+          year,
+          total_credits: sheetData.summary.totalCredits,
+          total_debits: sheetData.summary.totalDebits,
+          current_balance: sheetData.summary.currentBalance,
+          cash_in_hand: sheetData.summary.cashInHand
+        })
+        .select('id')
+        .single();
+        
+      if (error || !newMonth) {
+        throw error || new Error("Failed to insert financial data");
+      }
+      
+      // Insert category data
+      for (const category of sheetData.categories) {
+        await supabase.from('category_data').insert({
+          financial_data_id: newMonth.id,
+          name: category.name,
+          spent: category.spent,
+          budget_limit: category.limit,
+          remaining: category.remaining
+        });
+      }
+      
+      // Insert transactions
+      for (const debit of sheetData.debits) {
+        await supabase.from('transactions').insert({
+          financial_data_id: newMonth.id,
+          description: debit.description,
+          amount: debit.amount,
+          transaction_type: 'debit',
+          category: debit.type,
+          expense_type: debit.expenseType,
+          transaction_date: debit.date
+        });
+      }
+      
+      for (const credit of sheetData.credits) {
+        await supabase.from('transactions').insert({
+          financial_data_id: newMonth.id,
+          description: credit.description,
+          amount: credit.amount,
+          transaction_type: 'credit',
+          transaction_date: new Date().toISOString().split('T')[0]
+        });
+      }
+    }
+    
+    toast.success(`Updated ${month} ${year} data in database`);
+  } catch (error) {
+    console.error("Error saving current month to Supabase:", error);
+    toast.error("Failed to save current month data");
+  }
+};
+
+// Function to parse Google Sheet data into our format
+const parseGoogleSheetData = async (rawData: any[]): Promise<SheetData> => {
+  try {
+    // Extract credits (income)
+    const credits = rawData
+      .filter(row => row.Type === 'credit')
+      .map(row => ({
+        description: row.Description || 'INFLOW',
+        amount: Number(row.Amount) || 0
+      }));
+      
+    // Extract debits (expenses)
+    const debits = rawData
+      .filter(row => row.Type === 'debit')
+      .map(row => ({
+        description: row.Description || '',
+        amount: Number(row.Amount) || 0,
+        date: row.Date || new Date().toISOString().split('T')[0],
+        type: row.Category || 'Other',
+        expenseType: row.ExpenseType || 'Fixed'
+      }));
+      
+    // Calculate totals
+    const totalCredits = credits.reduce((sum, credit) => sum + credit.amount, 0);
+    const totalDebits = debits.reduce((sum, debit) => sum + debit.amount, 0);
+    const currentBalance = rawData.find(row => row.Description === 'BALANCE')?.Amount || 0;
+    const cashInHand = rawData.find(row => row.Description === 'CASH_IN_HAND')?.Amount || 0;
+    
+    // Extract categories and budgets
+    const categoriesMap = new Map();
+    rawData
+      .filter(row => row.Type === 'category')
+      .forEach(row => {
+        categoriesMap.set(row.Category, {
+          name: row.Category,
+          spent: Number(row.Spent) || 0,
+          limit: Number(row.Budget) || 0,
+          remaining: Number(row.Remaining) || 0
+        });
+      });
+      
+    // Convert map to array for categories
+    const categories = Array.from(categoriesMap.values());
+    
+    // Get current month and year
+    const { month, year } = getCurrentMonthYear();
+    
+    // Create basic SheetData object
+    const sheetData: SheetData = {
+      credits,
+      debits,
+      categories,
+      summary: {
+        totalCredits,
+        totalDebits,
+        currentBalance: Number(currentBalance),
+        inflow: totalCredits,
+        outflow: totalDebits,
+        net: totalCredits - totalDebits,
+        month: `${month} ${year}`,
+        cashInHand: Number(cashInHand)
+      },
+      historicalData: {
+        months: [`${month} ${year}`],
+        spending: {},
+        income: { [`${month} ${year}`]: totalCredits }
+      },
+      assets: [
+        { type: "Savings", value: Number(rawData.find(row => row.Type === 'asset' && row.Category === 'Savings')?.Amount) || 0, growth: 0.03 },
+        { type: "Investments", value: Number(rawData.find(row => row.Type === 'asset' && row.Category === 'Investments')?.Amount) || 0, growth: 0.07 },
+        { type: "Property", value: Number(rawData.find(row => row.Type === 'asset' && row.Category === 'Property')?.Amount) || 0, growth: 0.05 }
+      ],
+      specialExpenses: [
+        { type: "renovation", amount: Number(rawData.find(row => row.Type === 'special' && row.Category === 'renovation')?.Amount) || 0, date: "2025-01-10" },
+        { type: "Shadi", amount: Number(rawData.find(row => row.Type === 'special' && row.Category === 'Shadi')?.Amount) || 0, date: "2024-12-15" },
+        { type: "umrah", amount: Number(rawData.find(row => row.Type === 'special' && row.Category === 'umrah')?.Amount) || 0, date: "2025-02-05" }
+      ]
+    };
+    
+    // Set up spending data for the current month
+    categories.forEach(category => {
+      if (!sheetData.historicalData.spending[category.name]) {
+        sheetData.historicalData.spending[category.name] = {};
+      }
+      sheetData.historicalData.spending[category.name][`${month} ${year}`] = category.spent;
+    });
+    
+    return sheetData;
+  } catch (error) {
+    console.error("Error parsing Google Sheet data:", error);
+    throw error;
+  }
+};
+
+// Function to merge current month data with historical data from Supabase
+const mergeWithHistoricalData = async (currentMonthData: SheetData): Promise<SheetData> => {
+  try {
     // Fetch historical financial data from Supabase
     const { data: financialData, error: financialDataError } = await supabase
       .from('financial_data')
@@ -118,33 +384,13 @@ export const fetchSheetData = async (url: string): Promise<SheetData> => {
     // Fetch all category data
     const { data: categoryData, error: categoryDataError } = await supabase
       .from('category_data')
-      .select('*, financial_data(month, year)');
+      .select('*, financial_data!inner(month, year)')
+      .order('financial_data.year', { ascending: true })
+      .order('financial_data.month', { ascending: true });
     
     if (categoryDataError) {
       throw categoryDataError;
     }
-    
-    // Find the current month's financial data
-    const currentMonthData = financialData?.find(
-      (data) => data.month === currentMonth && data.year === currentYear
-    ) || financialData?.[financialData.length - 1]; // Fallback to latest
-    
-    if (!currentMonthData) {
-      throw new Error("No financial data available");
-    }
-    
-    // Get categories for the current month
-    const currentMonthCategories = categoryData?.filter(
-      (cat) => cat.financial_data_id === currentMonthData.id
-    ) || [];
-    
-    // Transform Supabase data into the SheetData format
-    const categories = currentMonthCategories.map((cat) => ({
-      name: cat.name,
-      spent: Number(cat.spent),
-      limit: Number(cat.budget_limit),
-      remaining: Number(cat.remaining)
-    }));
     
     // Create historical data structure
     const months: string[] = [];
@@ -154,12 +400,19 @@ export const fetchSheetData = async (url: string): Promise<SheetData> => {
     // Process each month's data
     financialData?.forEach((fd) => {
       const monthYear = `${fd.month} ${fd.year}`;
+      
+      // Skip current month as we already have fresh data
+      if (monthYear === currentMonthData.summary.month) {
+        return;
+      }
+      
       months.push(monthYear);
       income[monthYear] = Number(fd.total_credits);
       
       // Get categories for this month
       const monthCategories = categoryData?.filter(
-        (cat) => cat.financial_data_id === fd.id
+        (cat) => cat.financial_data.month === fd.month && 
+                 cat.financial_data.year === fd.year
       ) || [];
       
       // Add spending data for each category
@@ -171,76 +424,63 @@ export const fetchSheetData = async (url: string): Promise<SheetData> => {
       });
     });
     
-    // Get transactions for the current month
-    const { data: transactions, error: transactionsError } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('financial_data_id', currentMonthData.id);
+    // Add current month data
+    months.push(currentMonthData.summary.month);
+    income[currentMonthData.summary.month] = currentMonthData.summary.totalCredits;
     
-    if (transactionsError) {
-      throw transactionsError;
-    }
+    // Add current month spending to historical data
+    currentMonthData.categories.forEach((cat) => {
+      if (!spending[cat.name]) {
+        spending[cat.name] = {};
+      }
+      spending[cat.name][currentMonthData.summary.month] = cat.spent;
+    });
     
-    // Create credits and debits arrays
-    const credits = transactions
-      ?.filter((tx) => tx.transaction_type === 'credit')
-      .map((tx) => ({
-        description: tx.description,
-        amount: Number(tx.amount)
-      })) || [{ description: "INFLOW", amount: Number(currentMonthData.total_credits) }];
+    // Sort months chronologically
+    months.sort((a, b) => {
+      const [aMonth, aYear] = a.split(' ');
+      const [bMonth, bYear] = b.split(' ');
+      const aDate = new Date(`${aMonth} 1, ${aYear}`);
+      const bDate = new Date(`${bMonth} 1, ${bYear}`);
+      return aDate.getTime() - bDate.getTime();
+    });
     
-    const debits = transactions
-      ?.filter((tx) => tx.transaction_type === 'debit')
-      .map((tx) => ({
-        description: tx.description,
-        amount: Number(tx.amount),
-        date: tx.transaction_date,
-        type: tx.category || "Other",
-        expenseType: tx.expense_type || "Fixed"
-      })) || [];
-    
-    // Mock assets and special expenses since they're not in the database yet
-    const assets = [
-      { type: "Savings", value: 2500000, growth: 0.03 },
-      { type: "Investments", value: 1200000, growth: 0.07 },
-      { type: "Property", value: 8000000, growth: 0.05 }
-    ];
-    
-    const specialExpenses = [
-      { type: "renovation", amount: 800000, date: "2025-01-10" },
-      { type: "Shadi", amount: 1200000, date: "2024-12-15" },
-      { type: "umrah", amount: 650000, date: "2025-02-05" }
-    ];
-    
-    // Create the full SheetData object
-    const sheetData: SheetData = {
-      credits,
-      debits,
-      categories,
-      summary: {
-        totalCredits: Number(currentMonthData.total_credits),
-        totalDebits: Number(currentMonthData.total_debits),
-        currentBalance: Number(currentMonthData.current_balance),
-        inflow: Number(currentMonthData.total_credits),
-        outflow: Number(currentMonthData.total_debits),
-        net: Number(currentMonthData.total_credits) - Number(currentMonthData.total_debits),
-        month: `${currentMonthData.month} ${currentMonthData.year}`,
-        cashInHand: Number(currentMonthData.cash_in_hand)
-      },
-      historicalData: {
-        months,
-        spending,
-        income
-      },
-      assets,
-      specialExpenses
+    // Update the historical data in the sheet data object
+    currentMonthData.historicalData = {
+      months,
+      spending,
+      income
     };
     
-    toast.success(`Balance sheet data loaded for ${sheetData.summary.month}`);
-    return sheetData;
-    
+    return currentMonthData;
   } catch (error) {
-    console.error("Error fetching sheet data from Supabase:", error);
+    console.error("Error merging with historical data:", error);
+    // Return current month data if historical data can't be fetched
+    return currentMonthData;
+  }
+};
+
+// Function to fetch and parse Google Sheet data from Google Sheets and Supabase
+export const fetchSheetData = async (url: string): Promise<SheetData> => {
+  // Save the URL for future use
+  await saveSheetUrl(url);
+  
+  try {
+    // Step 1: Parse Google Sheet for current month data
+    const rawSheetData = await parseGoogleSheetCSV(url);
+    const currentMonthData = await parseGoogleSheetData(rawSheetData);
+    
+    // Step 2: Save current month data to Supabase for historical tracking
+    const { month, year } = getCurrentMonthYear();
+    await saveCurrentMonthToSupabase(currentMonthData, month, year);
+    
+    // Step 3: Merge current month data with historical data from Supabase
+    const completeData = await mergeWithHistoricalData(currentMonthData);
+    
+    toast.success(`Balance sheet data loaded for ${completeData.summary.month}`);
+    return completeData;
+  } catch (error) {
+    console.error("Error fetching sheet data:", error);
     toast.error("Failed to load balance sheet data");
     
     // Return mock data as fallback
@@ -264,16 +504,23 @@ export const getCategoryData = (sheetData: SheetData, categoryName: string) => {
   return category;
 };
 
-// Function to analyze spending trends
+// Function to analyze spending trends with improved insights
 export const analyzeSpendingTrends = (sheetData: SheetData) => {
   const trends = [];
   
-  // Check for categories with increasing spending
+  // Check for categories with increasing or decreasing spending
   for (const category of sheetData.categories) {
     const categoryHistory = sheetData.historicalData.spending[category.name];
     if (!categoryHistory) continue;
     
-    const months = Object.keys(categoryHistory);
+    const months = Object.keys(categoryHistory).sort((a, b) => {
+      const [aMonth, aYear] = a.split(' ');
+      const [bMonth, bYear] = b.split(' ');
+      const aDate = new Date(`${aMonth} 1, ${aYear}`);
+      const bDate = new Date(`${bMonth} 1, ${bYear}`);
+      return aDate.getTime() - bDate.getTime();
+    });
+    
     if (months.length < 2) continue;
     
     const latestMonth = months[months.length - 1];
@@ -282,19 +529,112 @@ export const analyzeSpendingTrends = (sheetData: SheetData) => {
     const latestSpending = categoryHistory[latestMonth];
     const previousSpending = categoryHistory[previousMonth];
     
+    // Calculate percent change
     const percentChange = ((latestSpending - previousSpending) / previousSpending) * 100;
     
+    // Add more meaningful insights
     if (percentChange > 5) {
+      // For significant increases
       trends.push({
         category: category.name,
         change: percentChange.toFixed(1),
-        message: `Your ${category.name} spending has increased by ${percentChange.toFixed(1)}% since last month.`
+        message: `Your ${category.name} spending has increased by ${percentChange.toFixed(1)}% since last month. ${
+          percentChange > 20 
+            ? `This is a substantial increase that needs attention.` 
+            : `Consider reviewing this category's expenses.`
+        }`
       });
     } else if (percentChange < -5) {
+      // For significant decreases (good job!)
       trends.push({
         category: category.name,
         change: percentChange.toFixed(1),
-        message: `Great job! You've reduced your ${category.name} spending by ${Math.abs(percentChange).toFixed(1)}% since last month.`
+        message: `Great job! You've reduced your ${category.name} spending by ${Math.abs(percentChange).toFixed(1)}% since last month. ${
+          Math.abs(percentChange) > 20 
+            ? `This is an excellent improvement in your financial discipline.` 
+            : `Keep up the good work!`
+        }`
+      });
+    }
+    
+    // Look for categories over budget
+    if (category.remaining < 0) {
+      const overBudgetPercent = (Math.abs(category.remaining) / category.limit) * 100;
+      trends.push({
+        category: category.name,
+        change: overBudgetPercent.toFixed(1),
+        message: `Your ${category.name} spending is ${overBudgetPercent.toFixed(1)}% over budget this month. ${
+          overBudgetPercent > 50 
+            ? `This significantly exceeds your planned budget and needs immediate attention.` 
+            : `Consider adjusting your spending or budget in this category.`
+        }`
+      });
+    }
+  }
+  
+  // Add overall spending trend
+  const months = sheetData.historicalData.months;
+  if (months.length >= 3) {
+    const last3Months = months.slice(-3);
+    
+    // Calculate total spending for each of the last 3 months
+    const monthlyTotals = last3Months.map(month => {
+      let total = 0;
+      Object.values(sheetData.historicalData.spending).forEach(categoryData => {
+        if (categoryData[month]) {
+          total += categoryData[month];
+        }
+      });
+      return { month, total };
+    });
+    
+    // Analyze the 3-month trend
+    if (monthlyTotals[2].total > monthlyTotals[1].total && monthlyTotals[1].total > monthlyTotals[0].total) {
+      // Consistently increasing spending
+      const percentIncrease = ((monthlyTotals[2].total - monthlyTotals[0].total) / monthlyTotals[0].total) * 100;
+      trends.push({
+        category: "Overall",
+        change: percentIncrease.toFixed(1),
+        message: `Your overall spending has been consistently increasing over the last 3 months, up ${percentIncrease.toFixed(1)}% in total. This is a concerning trend that may impact your savings goals.`
+      });
+    } else if (monthlyTotals[2].total < monthlyTotals[1].total && monthlyTotals[1].total < monthlyTotals[0].total) {
+      // Consistently decreasing spending
+      const percentDecrease = ((monthlyTotals[0].total - monthlyTotals[2].total) / monthlyTotals[0].total) * 100;
+      trends.push({
+        category: "Overall",
+        change: (-percentDecrease).toFixed(1),
+        message: `Excellent! Your overall spending has been consistently decreasing over the last 3 months, down ${percentDecrease.toFixed(1)}% in total. You're making great progress toward your financial goals.`
+      });
+    }
+    
+    // Calculate savings rate trend
+    const savingsRates = last3Months.map(month => {
+      const income = sheetData.historicalData.income[month] || 0;
+      let expenses = 0;
+      
+      Object.values(sheetData.historicalData.spending).forEach(categoryData => {
+        if (categoryData[month]) {
+          expenses += categoryData[month];
+        }
+      });
+      
+      const savingsRate = income > 0 ? ((income - expenses) / income) * 100 : 0;
+      return { month, savingsRate };
+    });
+    
+    // Add savings rate insight
+    const latestSavingsRate = savingsRates[2].savingsRate;
+    if (latestSavingsRate < 10) {
+      trends.push({
+        category: "Savings",
+        change: latestSavingsRate.toFixed(1),
+        message: `Your current savings rate is only ${latestSavingsRate.toFixed(1)}%. Financial experts recommend saving at least 20% of your income. Consider reducing discretionary spending.`
+      });
+    } else if (latestSavingsRate > 20) {
+      trends.push({
+        category: "Savings",
+        change: latestSavingsRate.toFixed(1),
+        message: `Your savings rate of ${latestSavingsRate.toFixed(1)}% is excellent! You're exceeding the recommended 20% savings rate, which will help you reach your financial goals faster.`
       });
     }
   }
