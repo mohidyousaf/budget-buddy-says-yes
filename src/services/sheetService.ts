@@ -1,6 +1,6 @@
+
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import Papa from "papaparse";
 
 // Enhanced data model based on user requirements
 export type SheetData = {
@@ -61,9 +61,9 @@ export const getSavedSheetUrl = async (): Promise<string | null> => {
       return localStorage.getItem('sheetUrl');
     }
     
-    // Fix the property access - data might be null or have a different shape
-    if (data && typeof data === 'object') {
-      return data.sheet_url;
+    // Handle the array response - data is an array of objects
+    if (data && Array.isArray(data) && data.length > 0) {
+      return data[0].sheet_url;
     }
     
     // Fallback to localStorage if no data
