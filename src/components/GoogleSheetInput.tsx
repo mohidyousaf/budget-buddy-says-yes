@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Link, Loader2 } from "lucide-react";
-import { getSavedSheetUrl } from "@/services/sheetService";
+import { getSavedSheetUrl, DEFAULT_SHEET_URL } from "@/services/sheetService";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 type GoogleSheetInputProps = {
@@ -14,7 +14,7 @@ type GoogleSheetInputProps = {
 };
 
 const GoogleSheetInput = ({ onSheetSubmit, isLoading }: GoogleSheetInputProps) => {
-  const [sheetUrl, setSheetUrl] = useState("");
+  const [sheetUrl, setSheetUrl] = useState(DEFAULT_SHEET_URL);
   const [isLoadingSaved, setIsLoadingSaved] = useState(true);
   const isMobile = useIsMobile();
 
@@ -22,14 +22,24 @@ const GoogleSheetInput = ({ onSheetSubmit, isLoading }: GoogleSheetInputProps) =
   useEffect(() => {
     const checkSavedUrl = async () => {
       try {
-        const savedUrl = await getSavedSheetUrl();
-        if (savedUrl) {
-          setSheetUrl(savedUrl);
+        let savedUrl = await getSavedSheetUrl();
+        
+        // If no saved URL is found, use the default URL
+        if (!savedUrl) {
+          savedUrl = DEFAULT_SHEET_URL;
+          toast.info("Using default sheet URL");
+        } else {
           toast.info("Using previously saved sheet URL");
-          onSheetSubmit(savedUrl);
         }
+        
+        setSheetUrl(savedUrl);
+        onSheetSubmit(savedUrl);
       } catch (error) {
         console.error("Error loading saved sheet URL:", error);
+        // Use default URL as fallback
+        setSheetUrl(DEFAULT_SHEET_URL);
+        onSheetSubmit(DEFAULT_SHEET_URL);
+        toast.info("Using default sheet URL");
       } finally {
         setIsLoadingSaved(false);
       }

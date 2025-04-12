@@ -1,6 +1,6 @@
-
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import Papa from "papaparse";
 
 // Enhanced data model based on user requirements
 export type SheetData = {
@@ -687,7 +687,7 @@ export const getFinancialWellnessScore = (sheetData: SheetData) => {
   };
 };
 
-// NEW: Function to filter trend data for selected months
+// Function to filter trend data for selected months
 export const getFilteredTrendData = (sheetData: SheetData, monthsToShow: number): {
   filteredMonths: string[];
   filteredSpending: Record<string, Record<string, number>>;
@@ -711,27 +711,42 @@ export const getFilteredTrendData = (sheetData: SheetData, monthsToShow: number)
   return { filteredMonths, filteredSpending };
 };
 
-// Fallback mock data function in case of errors
+// Update the mockFallbackData function to use the current month and year
 function mockFallbackData(): SheetData {
+  const { month, year } = getCurrentMonthYear();
+  const currentMonthYear = `${month} ${year}`;
+  
+  // Create previous months for historical data
+  const date = new Date();
+  date.setMonth(date.getMonth() - 1);
+  const prevMonth1 = date.toLocaleString('default', { month: 'long' });
+  const prevYear1 = date.getFullYear();
+  const prevMonthYear1 = `${prevMonth1} ${prevYear1}`;
+  
+  date.setMonth(date.getMonth() - 1);
+  const prevMonth2 = date.toLocaleString('default', { month: 'long' });
+  const prevYear2 = date.getFullYear();
+  const prevMonthYear2 = `${prevMonth2} ${prevYear2}`;
+
   return {
     credits: [
       { description: "INFLOW", amount: 378000 }
     ],
     debits: [
-      { description: "car", amount: 7000, date: "2025-03-15", type: "Car", expenseType: "Fixed" },
-      { description: "shopping", amount: 55400, date: "2025-03-10", type: "Shopping", expenseType: "Discretionary" },
-      { description: "Petrol", amount: 6000, date: "2025-03-05", type: "Petrol", expenseType: "Fixed" },
-      { description: "FixedCost", amount: 24000, date: "2025-03-20", type: "FixedCost", expenseType: "Fixed" },
-      { description: "Food", amount: 2500, date: "2025-03-13", type: "Food", expenseType: "Fixed" },
-      { description: "Entertainment", amount: 0, date: "2025-03-13", type: "Entertainment", expenseType: "Discretionary" },
-      { description: "Grocery", amount: 6595, date: "2025-03-13", type: "Grocery", expenseType: "Fixed" },
-      { description: "Payable", amount: 169748, date: "2025-03-13", type: "Payable", expenseType: "Fixed" },
-      { description: "Grooming", amount: 0, date: "2025-03-13", type: "Grooming", expenseType: "Discretionary" },
-      { description: "Loans", amount: 0, date: "2025-03-13", type: "Loans", expenseType: "Fixed" },
-      { description: "Cat", amount: 7200, date: "2025-03-13", type: "Cat", expenseType: "Fixed" },
-      { description: "umrah", amount: 0, date: "2025-03-13", type: "umrah", expenseType: "Discretionary" },
-      { description: "Shadi", amount: 12000, date: "2025-03-13", type: "Shadi", expenseType: "Variable" },
-      { description: "noor", amount: 68256, date: "2025-03-20", type: "noor", expenseType: "Variable" },
+      { description: "car", amount: 7000, date: `${year}-${date.getMonth() + 1}-15`, type: "Car", expenseType: "Fixed" },
+      { description: "shopping", amount: 55400, date: `${year}-${date.getMonth() + 1}-10`, type: "Shopping", expenseType: "Discretionary" },
+      { description: "Petrol", amount: 6000, date: `${year}-${date.getMonth() + 1}-5`, type: "Petrol", expenseType: "Fixed" },
+      { description: "FixedCost", amount: 24000, date: `${year}-${date.getMonth() + 1}-20`, type: "FixedCost", expenseType: "Fixed" },
+      { description: "Food", amount: 2500, date: `${year}-${date.getMonth() + 1}-13`, type: "Food", expenseType: "Fixed" },
+      { description: "Entertainment", amount: 0, date: `${year}-${date.getMonth() + 1}-13`, type: "Entertainment", expenseType: "Discretionary" },
+      { description: "Grocery", amount: 6595, date: `${year}-${date.getMonth() + 1}-13`, type: "Grocery", expenseType: "Fixed" },
+      { description: "Payable", amount: 169748, date: `${year}-${date.getMonth() + 1}-13`, type: "Payable", expenseType: "Fixed" },
+      { description: "Grooming", amount: 0, date: `${year}-${date.getMonth() + 1}-13`, type: "Grooming", expenseType: "Discretionary" },
+      { description: "Loans", amount: 0, date: `${year}-${date.getMonth() + 1}-13`, type: "Loans", expenseType: "Fixed" },
+      { description: "Cat", amount: 7200, date: `${year}-${date.getMonth() + 1}-13`, type: "Cat", expenseType: "Fixed" },
+      { description: "umrah", amount: 0, date: `${year}-${date.getMonth() + 1}-13`, type: "umrah", expenseType: "Discretionary" },
+      { description: "Shadi", amount: 12000, date: `${year}-${date.getMonth() + 1}-13`, type: "Shadi", expenseType: "Variable" },
+      { description: "noor", amount: 68256, date: `${year}-${date.getMonth() + 1}-20`, type: "noor", expenseType: "Variable" },
     ],
     categories: [
       { name: "Car", spent: 7000, limit: 5000, remaining: -2000 },
@@ -756,25 +771,73 @@ function mockFallbackData(): SheetData {
       inflow: 378000,
       outflow: 350604,
       net: 27396,
-      month: "March 2025",
+      month: currentMonthYear,
       cashInHand: 1577311
     },
     historicalData: {
-      months: ["Jan 2025", "Feb 2025", "Mar 2025"],
+      months: [prevMonthYear2, prevMonthYear1, currentMonthYear],
       spending: {
-        "Car": { "Jan 2025": 6500, "Feb 2025": 6800, "Mar 2025": 7000 },
-        "Shopping": { "Jan 2025": 42000, "Feb 2025": 48000, "Mar 2025": 55400 },
-        "Petrol": { "Jan 2025": 5800, "Feb 2025": 5900, "Mar 2025": 6000 },
-        "FixedCost": { "Jan 2025": 20000, "Feb 2025": 22000, "Mar 2025": 24000 },
-        "Food": { "Jan 2025": 3000, "Feb 2025": 2800, "Mar 2025": 2500 },
-        "Entertainment": { "Jan 2025": 2000, "Feb 2025": 1000, "Mar 2025": 0 },
-        "Grocery": { "Jan 2025": 6000, "Feb 2025": 6200, "Mar 2025": 6595 },
-        "Payable": { "Jan 2025": 145000, "Feb 2025": 155000, "Mar 2025": 169748 },
-        "Cat": { "Jan 2025": 6800, "Feb 2025": 7000, "Mar 2025": 7200 },
-        "Shadi": { "Jan 2025": 10000, "Feb 2025": 11000, "Mar 2025": 12000 },
-        "noor": { "Jan 2025": 65000, "Feb 2025": 67000, "Mar 2025": 68256 }
+        "Car": { 
+          [prevMonthYear2]: 6500, 
+          [prevMonthYear1]: 6800, 
+          [currentMonthYear]: 7000 
+        },
+        "Shopping": { 
+          [prevMonthYear2]: 42000, 
+          [prevMonthYear1]: 48000, 
+          [currentMonthYear]: 55400 
+        },
+        "Petrol": { 
+          [prevMonthYear2]: 5800, 
+          [prevMonthYear1]: 5900, 
+          [currentMonthYear]: 6000 
+        },
+        "FixedCost": { 
+          [prevMonthYear2]: 20000, 
+          [prevMonthYear1]: 22000, 
+          [currentMonthYear]: 24000 
+        },
+        "Food": { 
+          [prevMonthYear2]: 3000, 
+          [prevMonthYear1]: 2800, 
+          [currentMonthYear]: 2500 
+        },
+        "Entertainment": { 
+          [prevMonthYear2]: 2000, 
+          [prevMonthYear1]: 1000, 
+          [currentMonthYear]: 0 
+        },
+        "Grocery": { 
+          [prevMonthYear2]: 6000, 
+          [prevMonthYear1]: 6200, 
+          [currentMonthYear]: 6595 
+        },
+        "Payable": { 
+          [prevMonthYear2]: 145000, 
+          [prevMonthYear1]: 155000, 
+          [currentMonthYear]: 169748 
+        },
+        "Cat": { 
+          [prevMonthYear2]: 6800, 
+          [prevMonthYear1]: 7000, 
+          [currentMonthYear]: 7200 
+        },
+        "Shadi": { 
+          [prevMonthYear2]: 10000, 
+          [prevMonthYear1]: 11000, 
+          [currentMonthYear]: 12000 
+        },
+        "noor": { 
+          [prevMonthYear2]: 65000, 
+          [prevMonthYear1]: 67000, 
+          [currentMonthYear]: 68256 
+        }
       },
-      income: { "Jan 2025": 360000, "Feb 2025": 370000, "Mar 2025": 378000 }
+      income: { 
+        [prevMonthYear2]: 360000, 
+        [prevMonthYear1]: 370000, 
+        [currentMonthYear]: 378000 
+      }
     },
     assets: [
       { type: "Savings", value: 2500000, growth: 0.03 },
@@ -788,3 +851,5 @@ function mockFallbackData(): SheetData {
     ]
   };
 }
+
+export const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1l0ssB60pkAA2Xvwyl1A8PWtZBUIu5IxaeN6fueRxYvg/edit?usp=drivesdk";
